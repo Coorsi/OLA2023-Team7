@@ -1,0 +1,1 @@
+Benvenute nella repository del progetto 2023 di OLA, Gruppo 7
