@@ -1,3 +1,5 @@
+import numpy as np
+
 class Environment(): 
   def __init__(self, n_arms, probabilities, id_class): #probabilities is the probability distribution of the arm rewards
     self.n_arms = n_arms
