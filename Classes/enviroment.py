@@ -40,3 +40,6 @@ class Environment():
 
   def reward(self, conv_rate, bid, margin):
     return(self.n(bid)*conv_rate*margin - self.cc(bid))
+  
+  
+  
