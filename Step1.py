@@ -29,6 +29,7 @@ for row in range(5):
   earnings[row,:] = conversion_rate[row,:] * margins[row]
 
 earnings = earnings - np.min(earnings)
+
 earnings = earnings / np.max(earnings)
 
 env_array = []
