@@ -59,6 +59,7 @@ print(opt_index)
 opt = earnings[opt_index][0]
 optimal_bid_index = clairvoyant(classes,bids,prices, margins,conversion_rate,env_array)[1][0]
 optimal_bid = bids[int(optimal_bid_index)]
+print(optimal_bid)
 print(opt)
 
 for e in range(n_experiments):
