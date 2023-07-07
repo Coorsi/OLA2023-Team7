@@ -58,15 +58,18 @@ class GPTS_Learner(Learner):
     alpha = 1
     kernel = C(1e1, (1e-7, 1e7)) * RBF(1e1, (1e-7, 1e7))
     self.gp = GaussianProcessRegressor(kernel=kernel, alpha=alpha**2)
+    self.iteration = 0
 
   def update_observations(self, pulled_arm, reward):
     super().update_observations(pulled_arm, reward)
     self.pulled_arms.append(self.arms[pulled_arm])
   
   def update_model(self):
+    self.iteration += 1
     x = np.atleast_2d(self.pulled_arms).T
     y = self.collected_rewards
-    self.gp.fit(x,y)
+    if sum([int(k) for k in str(self.iteration)]) < 6:
+      self.gp.fit(x,y)
     self.means, self.sigmas = self.gp.predict(np.atleast_2d(self.arms).T, return_std=True)
     self.sigmas = np.maximum(self.sigmas, 1e-2)
 
@@ -88,17 +91,26 @@ class GPUCB_Learner(Learner):
     self.sigmas = np.ones(n_arms)*np.inf
     self.pulled_arms = []
     alpha = 1
+<<<<<<< HEAD
     kernel = C(1e1, (1e-7, 1e7)) * RBF(1e1, (1e-7, 1e7))
     self.gp = GaussianProcessRegressor(kernel=kernel, alpha=alpha**2,n_restarts_optimizer=5)
+=======
+    kernel = C(1e1, (1e-3, 1e3)) * RBF(1e1, (1e-3, 1e3))
+    self.gp = GaussianProcessRegressor(kernel=kernel, alpha=alpha**2)
+    #self.bheta = 2*np.log((self.n_arms*np.power(self.t,2)*np.power(np.pi,2))/(6*0.05)) #0.05 is delta
+    self.iteration = 0
+>>>>>>> c82e2cfe00d3092914c16cab104d6d76f0dc0412
 
   def update_observations(self, pulled_arm, reward):
     super().update_observations(pulled_arm, reward)
     self.pulled_arms.append(self.arms[pulled_arm])
   
   def update_model(self):
+    self.iteration += 1
     x = np.atleast_2d(self.pulled_arms).T
     y = self.collected_rewards
-    self.gp.fit(x,y)
+    if sum([int(k) for k in str(self.iteration)]) < 6:
+      self.gp.fit(x,y)
     self.means, self.sigmas = self.gp.predict(np.atleast_2d(self.arms).T, return_std=True)
     self.means = np.array(self.means)
     self.sigmas = np.maximum(self.sigmas, 1e-2)
@@ -111,6 +123,9 @@ class GPUCB_Learner(Learner):
   def pull_arm(self):
     upper_conf = self.means + 1.96 * self.sigmas
     return np.random.choice(np.where(upper_conf == upper_conf.max())[0])
+<<<<<<< HEAD
 
   
  
+=======
+>>>>>>> c82e2cfe00d3092914c16cab104d6d76f0dc0412
