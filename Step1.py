@@ -4,7 +4,7 @@ from Classes.clairvoyant import clairvoyant
 
 import numpy as np
 import matplotlib.pyplot as plt
-
+from tqdm import tqdm
 
 
 n_prices = 5
@@ -44,8 +44,11 @@ for c in classes:
 T = 365
 
 n_experiments = 1000
+
 ts_rewards_per_experiments = []
+
 ucb1_rewards_per_experiments = []
+
 opt_index = int(clairvoyant(classes,bids,prices, margins,conversion_rate,env_array)[0][0])
 print(opt_index)
 opt = earnings[opt_index][0]
@@ -53,7 +56,7 @@ optimal_bid_index = clairvoyant(classes,bids,prices, margins,conversion_rate,env
 optimal_bid = bids[int(optimal_bid_index)]
 print(opt)
 
-for e in range(0, n_experiments):
+for e in tqdm(range(n_experiments)):
   env = env_array[0]
   ts_learner = TS_Learner(n_arms = n_prices)
   ucb1_learner = UCB1_Learner(n_arms = n_prices)

@@ -46,7 +46,8 @@ for c in classes:
 #EXPERIMENT BEGIN
 T = 365
 
-n_experiments = 100
+n_experiments = 20
+noise_std = 1
 
 gpts_num_click_per_experiments = []
 gpts_cum_cost_per_experiments = []
@@ -71,17 +72,19 @@ for e in range(n_experiments):
 
   for t in tqdm(range(T)):
     pulled_arm = gpts_learner_n.pull_arm()
-    reward = env.draw_n(bids[pulled_arm],1) # 1 is std
+    reward = env.draw_n(bids[pulled_arm],noise_std) # 1 is std
     gpts_learner_n.update(pulled_arm, reward)
+
     pulled_arm = gpts_learner_cc.pull_arm()
-    reward = env.draw_cc(bids[pulled_arm],1) # 1 is std
+    reward = env.draw_cc(bids[pulled_arm],noise_std) # 1 is std
     gpts_learner_cc.update(pulled_arm, reward)
     
     pulled_arm = gpucb_learner_n.pull_arm()
-    reward = env.draw_n(bids[pulled_arm],1) # 1 is std
+    reward = env.draw_n(bids[pulled_arm],noise_std) # 1 is std
     gpucb_learner_n.update(pulled_arm, reward)
+
     pulled_arm = gpucb_learner_cc.pull_arm()
-    reward = env.draw_cc(bids[pulled_arm],1) # 1 is std
+    reward = env.draw_cc(bids[pulled_arm],noise_std) # 1 is std
     gpucb_learner_cc.update(pulled_arm, reward)
 
   gpts_num_click_per_experiments.append(gpts_learner_n.collected_rewards)
@@ -101,7 +104,7 @@ gpucb_cum_cost_per_experiments = np.array(gpucb_cum_cost_per_experiments)
 #print("gpucb_num_click_per_experiments",gpucb_num_click_per_experiments)
 #print("gpucb_cum_cost_per_experiments",gpucb_cum_cost_per_experiments)
 
-fig, axs = plt.subplots(1,2,figsize=(14,7))
+fig, axs = plt.subplots(1,2,figsize=(24,12))
 
 opt_reward = opt * env_array[0].n(optimal_bid) - env_array[0].cc(optimal_bid)
 gpts_rewards_per_experiments = opt * gpts_num_click_per_experiments - gpts_cum_cost_per_experiments
