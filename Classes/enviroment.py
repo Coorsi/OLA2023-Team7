@@ -37,6 +37,7 @@ class Environment():
   def round(self, pulled_arm): #given an arm, return a reward
     reward = np.random.binomial(1, self.probabilities[pulled_arm])
     return reward
+  
 
   def reward(self, conv_rate, bid, margin):
     return(self.n(bid)*conv_rate*margin - self.cc(bid))

@@ -2,6 +2,12 @@ import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 
+import warnings
+from sklearn.exceptions import ConvergenceWarning
+warnings.filterwarnings('ignore', category=ConvergenceWarning)
+
+  
+
 class Learner():
   def __init__(self, n_arms):
     self.n_arms = n_arms
@@ -56,9 +62,10 @@ class GPTS_Learner(Learner):
     self.sigmas = np.ones(n_arms)*10
     self.pulled_arms = []
     alpha = 1
-    kernel = C(1e1, (1e-7, 1e7)) * RBF(1e1, (1e-7, 1e7))
+    kernel = C(1e1, (1e-7, 1e7)) * RBF(1e1, (1e-10, 1e7))
     self.gp = GaussianProcessRegressor(kernel=kernel, alpha=alpha**2)
     self.iteration = 0
+    self.refitFrequency = 13 #13 bc it divides 364
 
   def update_observations(self, pulled_arm, reward):
     super().update_observations(pulled_arm, reward)
@@ -68,7 +75,7 @@ class GPTS_Learner(Learner):
     self.iteration += 1
     x = np.atleast_2d(self.pulled_arms).T
     y = self.collected_rewards
-    if sum([int(k) for k in str(self.iteration)]) < 6:
+    if self.iteration % self.refitFrequency == 0:
       self.gp.fit(x,y)
     self.means, self.sigmas = self.gp.predict(np.atleast_2d(self.arms).T, return_std=True)
     self.sigmas = np.maximum(self.sigmas, 1e-2)
@@ -91,18 +98,20 @@ class GPUCB_Learner(Learner):
     self.sigmas = np.ones(n_arms)*np.inf
     self.pulled_arms = []
     alpha = 1
-    kernel = C(1e1, (1e-7, 1e7)) * RBF(1e1, (1e-7, 1e7))
+    kernel = C(1e1, (1e-7, 1e7)) * RBF(1e1, (1e-10, 1e7))
     self.gp = GaussianProcessRegressor(kernel=kernel, alpha=alpha**2,n_restarts_optimizer=5)
+    self.iteration = 0
+    self.refitFrequency = 13 #13 bc it divides 364
 
   def update_observations(self, pulled_arm, reward):
     super().update_observations(pulled_arm, reward)
     self.pulled_arms.append(self.arms[pulled_arm])
-  
+
   def update_model(self):
     self.iteration += 1
     x = np.atleast_2d(self.pulled_arms).T
     y = self.collected_rewards
-    if sum([int(k) for k in str(self.iteration)]) < 6:
+    if self.iteration % self.refitFrequency == 0:
       self.gp.fit(x,y)
     self.means, self.sigmas = self.gp.predict(np.atleast_2d(self.arms).T, return_std=True)
     self.means = np.array(self.means)
@@ -117,5 +126,5 @@ class GPUCB_Learner(Learner):
     upper_conf = self.means + 1.96 * self.sigmas
     return np.random.choice(np.where(upper_conf == upper_conf.max())[0])
 
-  
+
  
