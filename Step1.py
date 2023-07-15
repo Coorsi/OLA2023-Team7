@@ -42,7 +42,7 @@ for c in classes:
 #EXPERIMENT BEGIN
 T = 365
 
-n_experiments = 1000
+n_experiments = 100
 
 ts_rewards_per_experiments = []
 ucb1_rewards_per_experiments = []
@@ -71,7 +71,10 @@ for e in tqdm(range(n_experiments)):
   ts_rewards_per_experiments.append(ts_learner.collected_rewards)
   ucb1_rewards_per_experiments.append(ucb1_learner.collected_rewards)
 
-  
+#num_arms_pulled = np.array(list(map(lambda x: len(x),ts_learner.reward_per_arm)))
+#learned_optimal_price_index = np.argmax(num_arms_pulled)
+
+
 ts_rewards_per_experiments = np.array(ts_rewards_per_experiments)
 ucb1_rewards_per_experiments = np.array(ucb1_rewards_per_experiments)
 

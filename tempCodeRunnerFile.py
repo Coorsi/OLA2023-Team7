@@ -27,17 +27,35 @@ conversion_rate = np.array([[0.93,0.95,0.77], #1*price
 earnings = np.zeros([5,3]) # conv_rate * margin
 for row in range(5):
   earnings[row,:] = conversion_rate[row,:] * margins[row]
-print(earnings)
-normEarnings = earnings.copy()
-print(normEarnings)
-normEarnings = normEarnings - np.min(normEarnings)
 
+normEarnings = earnings.copy()
+normEarnings = normEarnings - np.min(normEarnings)
 normEarnings = normEarnings / np.max(normEarnings)
 
 env_array = []
 for c in classes:
   env_array.append(Environment(n_prices, normEarnings[:,c], c))
 
-print(earnings)
-print(normEarnings)
 
+
+
+#EXPERIMENT BEGIN FOR ESTIMATING THE OPTIMAL PRICE 
+T = 365
+
+n_experiments = 1000
+
+ts_rewards_per_experiments = []
+
+for e in tqdm(range(n_experiments)):
+  env = env_array[0]
+  ts_learner = TS_Learner(n_arms = n_prices)
+  for t in range(0, T):
+    pulled_arm = ts_learner.pull_arm()
+    reward = env.round(pulled_arm)
+    ts_learner.update(pulled_arm, reward)
+
+  ts_rewards_per_experiments.append(ts_learner.collected_rewards)
+
+num_arms_pulled = np.array(list(map(lambda x: len(x),ts_learner.reward_per_arm)))
+learned_optimal_price_index = np.argmax(num_arms_pulled)
+print(len(ts_learner.reward_per_arm[learned_optimal_price_index]))
