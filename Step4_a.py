@@ -85,28 +85,19 @@ ts_rewards_per_experiments_c3 = np.array(ts_rewards_per_experiments_c3)
 #best price for c1
 num_arms_pulled_c1 = np.array(list(map(lambda x: len(x),ts_learner_c1.reward_per_arm)))
 learned_optimal_price_index_c1 = np.argmax(num_arms_pulled_c1)
-print("opt index c1\n")
-print(learned_optimal_price_index_c1)
-print(len(ts_learner_c1.reward_per_arm[learned_optimal_price_index_c1]))
 
 #best price for c2
 num_arms_pulled_c2 = np.array(list(map(lambda x: len(x),ts_learner_c2.reward_per_arm)))
 learned_optimal_price_index_c2 = np.argmax(num_arms_pulled_c2)
-print("opt index c2\n")
-print(learned_optimal_price_index_c2)
-print(len(ts_learner_c2.reward_per_arm[learned_optimal_price_index_c2]))
 
 #best price for c3
 num_arms_pulled_c3 = np.array(list(map(lambda x: len(x),ts_learner_c3.reward_per_arm)))
 learned_optimal_price_index_c3 = np.argmax(num_arms_pulled_c3)
-print("opt index c3\n")
-print(learned_optimal_price_index_c3)
-print(len(ts_learner_c3.reward_per_arm[learned_optimal_price_index_c3]))
 
 #EXPERIMENT BEGIN FOR ESTIMATING BEST BID
 T = 365
 
-n_experiments = 1
+n_experiments = 10
 noise_std = 1
 
 gpts_reward = []
@@ -122,20 +113,22 @@ gpucb_reward_c3 = []
 opt_index_1 = int(clairvoyant(classes,bids,prices, margins,conversion_rate,env_array)[0][0])
 opt_index_2 = int(clairvoyant(classes,bids,prices, margins,conversion_rate,env_array)[0][1])
 opt_index_3 = int(clairvoyant(classes,bids,prices, margins,conversion_rate,env_array)[0][2])
-print(opt_index_1)
-print(opt_index_2)
 #opt = normEarnings[opt_index][0]
 #3 classes
-opt = (normEarnings[opt_index_1][0] + normEarnings[opt_index_2][1] + normEarnings[opt_index_3][2])
-print(opt)
+opt1 = normEarnings[opt_index_1][0]
+opt2 = normEarnings[opt_index_2][1] 
+opt3 = normEarnings[opt_index_3][2]
+
 optimal_bid_index = clairvoyant(classes,bids,prices, margins,conversion_rate,env_array)[1][0]
 optimal_bid_1 = bids[int(optimal_bid_index)]
 optimal_bid_index = clairvoyant(classes,bids,prices, margins,conversion_rate,env_array)[1][1]
 optimal_bid_2 = bids[int(optimal_bid_index)]
 optimal_bid_index = clairvoyant(classes,bids,prices, margins,conversion_rate,env_array)[1][2]
 optimal_bid_3 = bids[int(optimal_bid_index)]
-print(bids)
+print(optimal_bid_1)
+print(optimal_bid_2)
 print(optimal_bid_3)
+print('\n\n')
 
 for e in range(n_experiments):
   print(e)
@@ -195,11 +188,18 @@ gpts_reward = gpts_reward_c1 + gpts_reward_c2 + gpts_reward_c3
 gpucb_reward = np.array(gpucb_reward)
 gpucb_reward = gpucb_reward_c1 + gpucb_reward_c2 + gpucb_reward_c3
 
-opt_reward = opt * env_array[0].n(optimal_bid_1) - env_array[0].cc(optimal_bid_1) 
-opt_prova1 = opt * env_array[1].n(optimal_bid_2) - env_array[1].cc(optimal_bid_2)
-opt_prova2 = opt * env_array[2].n(optimal_bid_3) - env_array[2].cc(optimal_bid_3)
-opt_reward = opt_reward + opt_prova1 + opt_prova2
-print(opt_reward)
+opt_reward_1 = opt1 * env_array[0].n(optimal_bid_1) - env_array[0].cc(optimal_bid_1) 
+opt_reward_2 = opt2 * env_array[1].n(optimal_bid_2) - env_array[1].cc(optimal_bid_2)
+opt_reward_3 = opt3 * env_array[2].n(optimal_bid_3) - env_array[2].cc(optimal_bid_3)
+
+#total regret is the sum of all regrets
+tot_regret_gpts = []
+tot_regret_gpts = np.array(tot_regret_gpts)
+tot_regret_gpucb = []
+tot_regret_gpucb = np.array(tot_regret_gpucb)
+
+tot_regret_gpts = (opt_reward_1 - gpts_reward_c1) + (opt_reward_2 - gpts_reward_c2) + (opt_reward_3 - gpts_reward_c3)
+tot_regret_gpucb = (opt_reward_1 - gpucb_reward_c1) + (opt_reward_2 - gpucb_reward_c2) + (opt_reward_3 - gpucb_reward_c3)
 
 #plot
 fig, axs = plt.subplots(2,2,figsize=(24,12))
@@ -213,8 +213,8 @@ axs[0][0].plot(np.cumsum(np.mean(gpucb_reward, axis = 0)), 'm')
 axs[0][0].plot(np.cumsum(np.std(gpts_reward, axis = 0)), 'b')   
 axs[0][0].plot(np.cumsum(np.std(gpucb_reward, axis = 0)), 'c')
 
-axs[0][0].plot(np.cumsum(np.mean(opt_reward - gpts_reward, axis = 0)), 'g')
-axs[0][0].plot(np.cumsum(np.mean(opt_reward - gpucb_reward, axis = 0)), 'y')
+axs[0][0].plot(np.cumsum(np.mean(tot_regret_gpts, axis = 0)), 'g')
+axs[0][0].plot(np.cumsum(np.mean(tot_regret_gpucb, axis = 0)), 'y')
 
 axs[0][0].legend(["Reward GPTS", "Reward GPUCB","Std GPTS","Std GPUCB","Regret GPTS","Regret GPUCB"])
 axs[0][0].set_title("Cumulative GPTS vs GPUCB")
@@ -228,8 +228,8 @@ axs[0][1].set_title("Instantaneous Reward GPTS vs GPUCB")
 
 axs[1][0].set_xlabel("t")
 axs[1][0].set_ylabel("Regret")
-axs[1][0].plot(np.mean(opt_reward - gpts_reward, axis = 0), 'g')
-axs[1][0].plot(np.mean(opt_reward - gpucb_reward, axis = 0), 'y')
+axs[1][0].plot(np.mean(tot_regret_gpts, axis = 0), 'g')
+axs[1][0].plot(np.mean(tot_regret_gpucb, axis = 0), 'y')
 axs[1][0].legend(["Regret GPTS","Regret GPUCB"])
 axs[1][0].set_title("Instantaneous Std GPTS vs GPUCB")
 

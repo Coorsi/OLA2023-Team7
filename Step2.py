@@ -45,7 +45,7 @@ for c in classes:
 #EXPERIMENT BEGIN
 T = 365
 
-n_experiments = 100
+n_experiments = 3
 noise_std = 1
 
 gpts_reward = []
@@ -84,6 +84,8 @@ for e in range(n_experiments):
 gpts_reward = np.array(gpts_reward)
 gpucb_reward = np.array(gpucb_reward)
 
+print(gpts_reward)
+print(gpucb_reward)
 
 #print("gpts_num_click_per_experiments",gpts_num_click_per_experiments)
 #print("gpts_cum_cost_per_experiments",gpts_cum_cost_per_experiments)
@@ -94,6 +96,7 @@ gpucb_reward = np.array(gpucb_reward)
 fig, axs = plt.subplots(2,2,figsize=(24,12))
 
 opt_reward = opt * env_array[0].n(optimal_bid) - env_array[0].cc(optimal_bid)
+print(opt_reward)
 
 axs[0][0].set_xlabel("t")
 axs[0][0].set_ylabel("Regret")
