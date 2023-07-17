@@ -240,6 +240,8 @@ class EXP3Learner(Learner):
     idx = choices(self.arm_index, probabilityDistribution)
     return idx    
 
-  def update_observations(self, pulled_arm, reward):
+  def update(self, pulled_arm, reward):
+    self.t +=1
+    self.update_observations(pulled_arm, reward)
     estimatedReward = 1.0 * reward / self.probabilityDistribution[pulled_arm]
     self.weights[pulled_arm] *= math.exp(estimatedReward * self.gamma / self.n_arms)
