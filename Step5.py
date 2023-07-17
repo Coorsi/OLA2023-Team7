@@ -24,19 +24,19 @@ conversion_rate_phase1 =  np.array([[0.93,0.95,0.77], #1*price
                                     [0.09,0.18,0.11]  #5*price
                                     ])
                                       #C1   C2   C3
-conversion_rate_phase2 =  np.array([[0.85, 0.87, 0.75],  # 1*price
-                                    [0.76, 0.78, 0.40],  # 2*price
-                                    [0.59, 0.62, 0.27],  # 3*price
-                                    [0.46, 0.48, 0.19],  # 4*price
+conversion_rate_phase2 =  np.array([[0.95, 0.87, 0.75],  # 1*price
+                                    [0.89, 0.78, 0.40],  # 2*price
+                                    [0.75, 0.62, 0.27],  # 3*price
+                                    [0.30, 0.48, 0.19],  # 4*price
                                     [0.15, 0.17, 0.09]   # 5*price
                                     ])
 
                                       #C1   C2   C3
 conversion_rate_phase3 =  np.array([[0.95, 0.97, 0.80],  # 1*price
-                                    [0.88, 0.90, 0.48],  # 2*price
-                                    [0.65, 0.68, 0.31],  # 3*price
-                                    [0.51, 0.54, 0.23],  # 4*price
-                                    [0.18, 0.20, 0.12]   # 5*price
+                                    [0.85, 0.90, 0.48],  # 2*price
+                                    [0.50, 0.68, 0.31],  # 3*price
+                                    [0.44, 0.54, 0.23],  # 4*price
+                                    [0.13, 0.20, 0.12]   # 5*price
                                     ])
 
 
@@ -60,6 +60,7 @@ normEarnings_phase2 = normEarnings_phase2 / np.max(normEarnings_phase2)
 normEarnings_phase3 = earnings_phase3.copy()
 normEarnings_phase3 = normEarnings_phase3 - np.min(normEarnings_phase3)
 normEarnings_phase3 = normEarnings_phase3 / np.max(normEarnings_phase3)
+
 
 env_array = []
 T = 365
@@ -121,7 +122,7 @@ fig, axs = plt.subplots(2,2,figsize=(14,7))
 opt_phase1 = opt_phase1 * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
 opt_phase2 = opt_phase2 * env_array[0].n(optimal_bid_phase2) - env_array[0].cc(optimal_bid_phase2)
 opt_phase3 = opt_phase3 * env_array[0].n(optimal_bid_phase3) - env_array[0].cc(optimal_bid_phase3)
-opt = np.ones([1,T]) 
+opt = np.ones([T]) 
 opt[:int(T/3)] = opt[:int(T/3)] * opt_phase1 
 opt[int(T/3):2*int(T/3)] = opt[int(T/3):2*int(T/3)]* opt_phase2 
 opt[2*int(T/3):] = opt[2*int(T/3):] * opt_phase3
@@ -133,6 +134,8 @@ swucb_rewards_per_experiments[2*int(T/3):] = swucb_rewards_per_experiments[2*int
 cusum_rewards_per_experiments[:int(T/3)] = cusum_rewards_per_experiments[:int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
 cusum_rewards_per_experiments[int(T/3):2*int(T/3)] = cusum_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase2) - env_array[0].cc(optimal_bid_phase2)
 cusum_rewards_per_experiments[2*int(T/3):] = cusum_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase3) - env_array[0].cc(optimal_bid_phase3)
+
+
 
 
 axs[0][0].set_xlabel("t")
