@@ -42,6 +42,17 @@ class Environment():
   def reward(self, conv_rate, bid, margin):
     return(self.n(bid)*conv_rate*margin - self.cc(bid))
   
-  
-  
-  
+
+class Non_Stationary_Environment(Environment):
+    def __init__(self, n_arms, probabilities, id_class, horizon):
+        super().__init__(n_arms, probabilities, id_class)
+        self.time = 0
+        self.n_phases = len(self.probabilities)
+        self.phases_size = int(horizon/self.n_phases)
+
+    def round(self, pulled_arm):
+        current_phase = int(self.time/self.phases_size)  if int(self.time/self.phases_size) < self.n_phases else self.n_phases - 1
+        p = self.probabilities[current_phase][pulled_arm]
+        reward = np.random.binomial(1, p)
+        self.time += 1
+        return reward

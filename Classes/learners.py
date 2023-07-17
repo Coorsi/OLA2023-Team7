@@ -54,6 +54,38 @@ class UCB1_Learner(Learner):
     self.update_observations(pulled_arm, reward)
 
 
+class SWTS_Learner(TS_Learner):
+    def __init__(self, n_arms, window_size):
+        super().__init__(n_arms)
+        self.window_size = window_size
+        self.pulled_arms = np.array([])
+    
+    def update(self, pulled_arm, reward):
+        self.current += 1
+        self.update_observations(pulled_arm, reward)
+        self.pulled_arms = np.append(self.pulled_arms, pulled_arm)
+        for arm in range(self.n_arms):
+            n_samples = np.sum(self.pulled_arms[-self.window_size:] == arm)
+            cum_rew = np.sum(self.reward_per_arm[arm][-n_samples:]) if n_samples > 0 else 0
+            self.beta_parameters[arm,0] = cum_rew + 1
+            self.beta_parameters[arm,1] = n_samples - cum_rew + 1
+
+class SWUCB_Learner(UCB1_Learner):
+    def __init__(self, n_arms, window_size):
+        super().__init__(n_arms)
+        self.window_size = window_size
+        self.pulled_arms = np.array([])
+    
+    def update(self, pulled_arm, reward):
+        self.t += 1
+        self.update_observations(pulled_arm, reward)
+        self.pulled_arms = np.append(self.pulled_arms, pulled_arm)
+        for arm in range(self.n_arms):
+            n_samples = np.sum(self.pulled_arms[-self.window_size:] == arm)
+            cum_rew = np.sum(self.reward_per_arm[arm][-n_samples:]) if n_samples > 0 else 0
+            self.emprical_means[arm] = cum_rew / n_samples if n_samples > 0 else 0
+            self.confidence[arm] = (2*np.log(self.t)/n_samples)**0.5 if n_samples > 0 else np.inf
+
 class GPTS_Learner(Learner):
   def __init__(self, n_arms, arms):
     super().__init__(n_arms)
