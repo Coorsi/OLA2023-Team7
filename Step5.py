@@ -1,11 +1,11 @@
-from Classes.learners import Learner,TS_Learner,UCB1_Learner,SWTS_Learner,SWUCB_Learner
+from Classes.learners import Learner,TS_Learner,UCB1_Learner,SWTS_Learner,SWUCB_Learner,CUSUM_UCB_Learner
 from Classes.enviroment import Non_Stationary_Environment
 from Classes.clairvoyant import clairvoyant
 
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-
+from copy import deepcopy
 
 n_prices = 5
 n_bids = 100
@@ -68,9 +68,15 @@ for c in classes:
 
 #EXPERIMENT BEGIN
 
+
 n_experiments = 100
 
+M = 100 #number of steps to obtain reference point in change detection (for CUSUM)
+eps = 0.1 #epsilon for deviation from reference point in change detection (for CUSUM)
+h = np.log(T)*2 #threshold for change detection (for CUSUM)
+
 swucb_rewards_per_experiments = []
+cusum_rewards_per_experiments = []
 
 opt_index_phase1 = int(clairvoyant(classes,bids,prices, margins,conversion_rate_phase1,env_array)[0][0])
 opt_phase1 = normEarnings_phase1[opt_index_phase1][0]
@@ -89,19 +95,26 @@ optimal_bid_phase3 = bids[int(optimal_bid_index_phase3)]
 
 
 for e in tqdm(range(n_experiments)):
-  env = env_array[0]
+  env_swucb = deepcopy(env_array[0])
+  env_cusum = deepcopy(env_array[0])
   swucb_learner = SWUCB_Learner(n_arms = n_prices, window_size = int(T/3))
+  cusum_learner = CUSUM_UCB_Learner(n_arms = n_prices, M = M, eps = eps, h = h)
   for t in range(0, T):
 
     pulled_arm = swucb_learner.pull_arm()
-    reward = env.round(pulled_arm)
+    reward = env_swucb.round(pulled_arm)
     swucb_learner.update(pulled_arm, reward)
 
-  swucb_rewards_per_experiments.append(swucb_learner.collected_rewards)
+    pulled_arm = cusum_learner.pull_arm()
+    reward = env_cusum.round(pulled_arm)
+    cusum_learner.update(pulled_arm, reward)
 
+  swucb_rewards_per_experiments.append(swucb_learner.collected_rewards)
+  cusum_rewards_per_experiments.append(cusum_learner.collected_rewards)
 
 
 swucb_rewards_per_experiments = np.array(swucb_rewards_per_experiments)
+cusum_rewards_per_experiments = np.array(cusum_rewards_per_experiments)
 
 fig, axs = plt.subplots(2,2,figsize=(14,7))
 
@@ -117,44 +130,45 @@ swucb_rewards_per_experiments[:int(T/3)] = swucb_rewards_per_experiments[:int(T/
 swucb_rewards_per_experiments[int(T/3):2*int(T/3)] = swucb_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase2) - env_array[0].cc(optimal_bid_phase2)
 swucb_rewards_per_experiments[2*int(T/3):] = swucb_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase3) - env_array[0].cc(optimal_bid_phase3)
 
+cusum_rewards_per_experiments[:int(T/3)] = cusum_rewards_per_experiments[:int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
+cusum_rewards_per_experiments[int(T/3):2*int(T/3)] = cusum_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase2) - env_array[0].cc(optimal_bid_phase2)
+cusum_rewards_per_experiments[2*int(T/3):] = cusum_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase3) - env_array[0].cc(optimal_bid_phase3)
+
 
 axs[0][0].set_xlabel("t")
 axs[0][0].set_ylabel("Regret")
 axs[0][0].plot(np.cumsum(np.mean(swucb_rewards_per_experiments, axis = 0)), 'r')
-
+axs[0][0].plot(np.cumsum(np.mean(cusum_rewards_per_experiments, axis = 0)), 'm')
 
 #We plot only the standard deviation of the reward beacuse the standard deviation of the regret is the same
 axs[0][0].plot(np.cumsum(np.std(swucb_rewards_per_experiments, axis = 0)), 'b')
+axs[0][0].plot(np.cumsum(np.std(cusum_rewards_per_experiments, axis = 0)), 'c')
 
 axs[0][0].plot(np.cumsum(np.mean(opt - swucb_rewards_per_experiments, axis = 0)), 'g')
+axs[0][0].plot(np.cumsum(np.mean(opt - cusum_rewards_per_experiments, axis = 0)), 'y')
 
-axs[0][0].legend(["Reward SWUCB","Std SWUCB","Regret SWUCB"])
-axs[0][0].set_title("Cumulative SWUCB")
+axs[0][0].legend(["Reward SWUCB","Reward CUSUM","Std SWUCB","Std CUSUM","Regret SWUCB","Regret CUSUM"])
+axs[0][0].set_title("Cumulative SWUCB vs CUSUM")
 
 
 axs[0][1].set_xlabel("t")
 axs[0][1].set_ylabel("Regret")
 axs[0][1].plot(np.mean(swucb_rewards_per_experiments, axis = 0), 'r')
+axs[0][1].plot(np.mean(cusum_rewards_per_experiments, axis = 0), 'm')
+axs[0][1].legend(["Reward SWUCB", "Reward CUSUM"])
+axs[0][1].set_title("Instantaneous Reward SWUCB vs CUSUM")
 
-axs[0][1].plot(np.std(swucb_rewards_per_experiments, axis = 0), 'b')
-
-axs[0][1].plot(np.mean(opt - swucb_rewards_per_experiments, axis = 0), 'g')
-
-axs[0][1].legend(["Reward SWUCB","Std SWUCB","Regret SWUCB"])
-axs[0][1].set_title("Instantaneous SWUCB")
-
-
-axs[1][0].set_xlabel("t")
-axs[1][0].set_ylabel("Regret")
-axs[1][0].plot(np.std(swucb_rewards_per_experiments, axis = 0), 'b')
-
-axs[1][0].legend(["Std SWUCB"])
-axs[1][0].set_title("Instantaneous Std SWUCB")
-
+#We plot only the standard deviation of the reward beacuse the standard deviation of the regret is the same
+axs[1][0].plot(np.std(swucb_rewards_per_experiments, axis = 0), 'b')   
+axs[1][0].plot(np.std(cusum_rewards_per_experiments, axis = 0), 'c')
+axs[1][0].legend(["Std SWUCB","Std CUSUM"])
+axs[1][0].set_title("Instantaneous Std SWUCB VS CUSUM")
 
 axs[1][1].plot(np.mean(opt - swucb_rewards_per_experiments, axis = 0), 'g')
-axs[1][1].legend(["Regret SWUCB"])
-axs[1][1].set_title("Instantaneous Regret SWUCB")
+axs[1][1].plot(np.mean(opt - cusum_rewards_per_experiments, axis = 0), 'y')
+axs[1][1].legend(["Regret SWUCB","Regret CUSUM"])
+axs[1][1].set_title("Instantaneous Regret SWUCB vs CUSUM")
+
 
 plt.show()
 

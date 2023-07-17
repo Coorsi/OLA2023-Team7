@@ -61,7 +61,7 @@ class SWTS_Learner(TS_Learner):
         self.pulled_arms = np.array([])
     
     def update(self, pulled_arm, reward):
-        self.current += 1
+        self.t += 1
         self.update_observations(pulled_arm, reward)
         self.pulled_arms = np.append(self.pulled_arms, pulled_arm)
         for arm in range(self.n_arms):
@@ -159,4 +159,64 @@ class GPUCB_Learner(Learner):
     return np.random.choice(np.where(upper_conf == upper_conf.max())[0])
 
 
- 
+class CUSUM:
+  def __init__(self, M, eps, h):
+      self.M = M
+      self.eps = eps
+      self.h = h
+      self.t = 0
+      self.reference = 0
+      self.g_plus = 0
+      self.g_minus = 0
+
+  def update(self, sample):
+      self.t += 1
+      if self.t <= self.M:
+          self.reference += sample/self.M
+          return 0
+      else:
+          s_plus = (sample - self.reference) - self.eps
+          s_minus = -(sample - self.reference) - self.eps
+          self.g_plus = max(0, self.g_plus + s_plus)
+          self.g_minus = max(0, self.g_minus + s_minus)
+          return self.g_plus > self.h or self.g_minus > self.h
+      
+  def reset(self): 
+      self.t = 0
+      self.g_minus = 0
+      self.g_plus = 0
+      self.reference = 0
+
+
+class CUSUM_UCB_Learner(UCB1_Learner):
+  def __init__(self, n_arms, M=100, eps=0.05, h=20, alpha=0.01):
+    super().__init__(n_arms)
+    self.change_detection = [CUSUM(M, eps, h) for _ in range(n_arms)]
+    self.valid_rewards_per_arm = [[] for _ in range(n_arms)]
+    self.detections =  [[] for _ in range(n_arms)]
+    self.alpha = alpha
+  
+  def pull_arm(self):
+    if np.random.binomial(1, 1-self.alpha):
+        upper_conf = self.emprical_means + self.confidence
+        return np.random.choice(np.where(upper_conf == upper_conf.max())[0])
+    else:
+        return np.random.randint(0, self.n_arms)
+  
+  def update(self, pulled_arm, reward):
+    self.t += 1
+    if self.change_detection[pulled_arm].update(reward):
+        self.detections[pulled_arm].append(self.t)
+        self.valid_rewards_per_arm[pulled_arm] = []
+        self.change_detection[pulled_arm].reset()
+    self.update_observations(pulled_arm, reward)
+    self.emprical_means[pulled_arm] = np.mean(self.valid_rewards_per_arm[pulled_arm])
+    total_valid_samples = sum([len(x) for x in self.valid_rewards_per_arm])
+    for a in range(self.n_arms):
+        n_samples = len(self.valid_rewards_per_arm[a])
+        self.confidence[a] = (2*np.log(total_valid_samples)/n_samples)**0.5 if n_samples > 0 else np.inf
+
+  def update_observations(self, pulled_arm, reward):
+    self.reward_per_arm[pulled_arm].append(reward)
+    self.valid_rewards_per_arm[pulled_arm].append(reward)
+    self.collected_rewards = np.append(self.collected_rewards, reward)
