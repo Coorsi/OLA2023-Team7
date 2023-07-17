@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
+import math
 
 import warnings
 from sklearn.exceptions import ConvergenceWarning
@@ -223,7 +224,7 @@ class CUSUM_UCB_Learner(UCB1_Learner):
     self.valid_rewards_per_arm[pulled_arm].append(reward)
     self.collected_rewards = np.append(self.collected_rewards, reward)
 
-class EXP3Learner(Learner):
+class EXP3_Learner(Learner):
   def __init__(self, n_arms, gamma):
     super().__init__(n_arms)
     self.gamma = gamma
@@ -232,13 +233,13 @@ class EXP3Learner(Learner):
     self.probabilityDistribution = []
 
   def distr(self):
-    theSum = float(sum(weights))
+    theSum = float(sum(self.weights))
     return tuple((1.0 - self.gamma) * (w / theSum) + (self.gamma / len(self.weights)) for w in self.weights)
 
   def pull_arm(self):
-    self.probabilityDistribution = distr(self.weights, self.gamma)
-    idx = choices(self.arm_index, probabilityDistribution)
-    return idx    
+    self.probabilityDistribution = self.distr()
+    idx = choices(self.arm_index, self.probabilityDistribution)
+    return idx[0]   
 
   def update(self, pulled_arm, reward):
     self.t +=1

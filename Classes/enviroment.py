@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 class Environment(): 
   def __init__(self, n_arms, probabilities, id_class): #probabilities is the probability distribution of the arm rewards
@@ -44,14 +45,22 @@ class Environment():
   
 
 class Non_Stationary_Environment(Environment):
-  def __init__(self, n_arms, probabilities, id_class, horizon):
+  def __init__(self, n_arms, probabilities, id_class, horizon, high_frequency_change):
     super().__init__(n_arms, probabilities, id_class)
     self.time = 0
+    self.high_frequency_change = high_frequency_change
     self.n_phases = len(self.probabilities)
-    self.phases_size = int(horizon/self.n_phases)
+    if not(self.high_frequency_change):
+      self.phases_size = int(horizon/self.n_phases)
+    else:
+      self.phases_size = int(horizon/(self.n_phases * 4))
+
 
   def round(self, pulled_arm):
-    current_phase = int(self.time/self.phases_size)  if int(self.time/self.phases_size) < self.n_phases else self.n_phases - 1
+    if not (self.high_frequency_change):
+      current_phase = int(self.time/self.phases_size)  if int(self.time/self.phases_size) < self.n_phases else self.n_phases - 1
+    else:
+      current_phase = int(self.time/self.phases_size)%5
     p = self.probabilities[current_phase][pulled_arm]
     reward = np.random.binomial(1, p)
     self.time += 1
