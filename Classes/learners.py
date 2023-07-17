@@ -4,6 +4,8 @@ from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 
 import warnings
 from sklearn.exceptions import ConvergenceWarning
+
+from random import choices
 warnings.filterwarnings('ignore', category=ConvergenceWarning)
 
   
@@ -220,3 +222,24 @@ class CUSUM_UCB_Learner(UCB1_Learner):
     self.reward_per_arm[pulled_arm].append(reward)
     self.valid_rewards_per_arm[pulled_arm].append(reward)
     self.collected_rewards = np.append(self.collected_rewards, reward)
+
+class EXP3Learner(Learner):
+  def __init__(self, n_arms, gamma):
+    super().__init__(n_arms)
+    self.gamma = gamma
+    self.weights = [1.0] * n_arms
+    self.arm_index = [i for i in range(n_arms)]
+    self.probabilityDistribution = []
+
+  def distr(self):
+    theSum = float(sum(weights))
+    return tuple((1.0 - self.gamma) * (w / theSum) + (self.gamma / len(self.weights)) for w in self.weights)
+
+  def pull_arm(self):
+    self.probabilityDistribution = distr(self.weights, self.gamma)
+    idx = choices(self.arm_index, probabilityDistribution)
+    return idx    
+
+  def update_observations(self, pulled_arm, reward):
+    estimatedReward = 1.0 * reward / self.probabilityDistribution[pulled_arm]
+    self.weights[pulled_arm] *= math.exp(estimatedReward * self.gamma / self.n_arms)

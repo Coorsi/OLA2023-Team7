@@ -97,7 +97,7 @@ learned_optimal_price_index_c3 = np.argmax(num_arms_pulled_c3)
 #EXPERIMENT BEGIN FOR ESTIMATING BEST BID
 T = 365
 
-n_experiments = 10
+n_experiments = 100
 noise_std = 1
 
 gpts_reward = []
