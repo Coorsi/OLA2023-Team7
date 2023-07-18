@@ -42,7 +42,7 @@ for c in classes:
 print(clairvoyant(classes,bids,prices, margins,conversion_rate,env_array))
 opt_index = int(clairvoyant(classes,bids,prices, margins,conversion_rate,env_array)[0][0])
 print(opt_index)
-opt = earnings[opt_index][0] #0 bc only first Class
+opt = normEarnings[opt_index][0] #0 bc only first Class
 optimal_bid_index = clairvoyant(classes,bids,prices, margins,conversion_rate,env_array)[1][0]
 optimal_bid = bids[int(optimal_bid_index)]
 print(optimal_bid)
@@ -67,15 +67,16 @@ for e in tqdm(range(n_experiments)):
   for t in range(0, T):
     pulled_arm_price = ts_learner.pull_arm()
     reward = env.round(pulled_arm_price)
-    sampled_conversion_rate = np.random.beta(ts_learner.beta_parameters[pulled_arm_price, 0], ts_learner.beta_parameters[pulled_arm_price, 1])
+    sampled_normEarning = np.random.beta(ts_learner.beta_parameters[pulled_arm_price, 0], ts_learner.beta_parameters[pulled_arm_price, 1])
+    # print(sampled_normEarning)
     ts_learner.update(pulled_arm_price, reward)
 
     pulled_arm_bid = gpts_learner.pull_arm()
-    reward_tot = env.draw_n(bids[pulled_arm_bid],noise_std) * sampled_conversion_rate * margins[pulled_arm_price]  - env.draw_cc(bids[pulled_arm_bid],noise_std)
+    reward_tot = env.draw_n(bids[pulled_arm_bid],noise_std) * sampled_normEarning - env.draw_cc(bids[pulled_arm_bid],noise_std)
     gpts_learner.update(pulled_arm_bid, reward_tot)
 
     pulled_arm_bid = gpucb_learner.pull_arm()
-    reward_tot = env.draw_n(bids[pulled_arm_bid],noise_std) * sampled_conversion_rate * margins[pulled_arm_price]  - env.draw_cc(bids[pulled_arm_bid],noise_std)
+    reward_tot = env.draw_n(bids[pulled_arm_bid],noise_std) * sampled_normEarning - env.draw_cc(bids[pulled_arm_bid],noise_std)
     gpucb_learner.update(pulled_arm_bid, reward_tot)
 
   ts_rewards_per_experiments.append(ts_learner.collected_rewards)
@@ -129,7 +130,7 @@ axs[1][1].set_ylabel("Reward")
 axs[1][1].plot(np.std(gpts_reward, axis = 0), 'b')   
 axs[1][1].plot(np.std(gpucb_reward, axis = 0), 'c')
 axs[1][1].legend(["Std GPTS", "Std GPUCB"])
-axs[1][1].set_title("Instantaneous Reward GPTS vs GPUCB")
+axs[1][1].set_title("Instantaneous STD GPTS vs GPUCB")
 
 
 plt.show()

@@ -30,13 +30,14 @@ earnings = np.zeros([5,3]) # conv_rate * margin
 for row in range(5):
   earnings[row,:] = conversion_rate[row,:] * margins[row]
 print(earnings)
-#earnings = earnings - np.min(earnings)
 
-#earnings = earnings / np.max(earnings)
+normEarnings = earnings.copy()
+normEarnings = normEarnings - np.min(normEarnings)
+normEarnings = normEarnings / np.max(normEarnings)
 
 env_array = []
 for c in classes:
-  env_array.append(Environment(n_prices, earnings[:,c], c))
+  env_array.append(Environment(n_prices, normEarnings[:,c], c))
 
 
 
@@ -45,7 +46,7 @@ for c in classes:
 #EXPERIMENT BEGIN
 T = 365
 
-n_experiments = 3
+n_experiments = 20
 noise_std = 1
 
 gpts_reward = []
