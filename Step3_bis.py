@@ -56,33 +56,34 @@ noise_std = 1
 
 ts_rewards_per_experiments = []
 gpts_reward = []
-# gpucb_reward = []
+gpucb_reward = []
 
 for e in tqdm(range(n_experiments)):
   env = env_array[0]
   ts_learner = TS_Learner(n_arms = n_prices)
   gpts_learner = GPTS_Learner(n_arms = n_bids, arms = bids)
-  # gpucb_learner = GPUCB_Learner(n_arms = n_bids, arms = bids)
+  gpucb_learner = GPUCB_Learner(n_arms = n_bids, arms = bids)
 
   for t in range(0, T):
     pulled_arm_price = ts_learner.pull_arm()
-    pulled_arm_bid = gpts_learner.pull_arm()
     reward = env.round(pulled_arm_price)
     sampled_conversion_rate = np.random.beta(ts_learner.beta_parameters[pulled_arm_price, 0], ts_learner.beta_parameters[pulled_arm_price, 1])
-    reward_tot = env.draw_n(bids[pulled_arm_bid],noise_std) * sampled_conversion_rate * margins[pulled_arm_price]  - env.draw_cc(bids[pulled_arm_bid],noise_std)
     ts_learner.update(pulled_arm_price, reward)
+
+    pulled_arm_bid = gpts_learner.pull_arm()
+    reward_tot = env.draw_n(bids[pulled_arm_bid],noise_std) * sampled_conversion_rate * margins[pulled_arm_price]  - env.draw_cc(bids[pulled_arm_bid],noise_std)
     gpts_learner.update(pulled_arm_bid, reward_tot)
 
-    # pulled_arm = gpucb_learner.pull_arm()
-    # reward = env.draw_n(bids[pulled_arm],noise_std) * earnings[learned_optimal_price_index][0] - env.draw_cc(bids[pulled_arm],noise_std)# 1 is std
-    # gpucb_learner.update(pulled_arm, reward)
+    pulled_arm_bid = gpucb_learner.pull_arm()
+    reward_tot = env.draw_n(bids[pulled_arm_bid],noise_std) * sampled_conversion_rate * margins[pulled_arm_price]  - env.draw_cc(bids[pulled_arm_bid],noise_std)
+    gpucb_learner.update(pulled_arm_bid, reward_tot)
 
   ts_rewards_per_experiments.append(ts_learner.collected_rewards)
   gpts_reward.append(gpts_learner.collected_rewards)
-  # gpucb_reward.append(gpucb_learner.collected_rewards)
+  gpucb_reward.append(gpucb_learner.collected_rewards)
 
 gpts_reward = np.array(gpts_reward)
-# gpucb_reward = np.array(gpucb_reward)
+gpucb_reward = np.array(gpucb_reward)
 
 fig, axs = plt.subplots(2,2,figsize=(24,12))
 
@@ -91,18 +92,17 @@ opt_reward = opt * env_array[0].n(optimal_bid) - env_array[0].cc(optimal_bid)
 axs[0][0].set_xlabel("t")
 axs[0][0].set_ylabel("Regret")
 axs[0][0].plot(np.cumsum(np.mean(gpts_reward, axis = 0)), 'r')
-# axs[0][0].plot(np.cumsum(np.mean(gpucb_reward, axis = 0)), 'm')
+axs[0][0].plot(np.cumsum(np.mean(gpucb_reward, axis = 0)), 'm')
 
 
 #We plot only the standard deviation of the reward beacuse the standard deviation of the regret is the same
 axs[0][0].plot(np.cumsum(np.std(gpts_reward, axis = 0)), 'b')   
-# axs[0][0].plot(np.cumsum(np.std(gpucb_reward, axis = 0)), 'c')
+axs[0][0].plot(np.cumsum(np.std(gpucb_reward, axis = 0)), 'c')
 
 axs[0][0].plot(np.cumsum(np.mean(opt_reward - gpts_reward, axis = 0)), 'g')
-# axs[0][0].plot(np.cumsum(np.mean(opt_reward - gpucb_reward, axis = 0)), 'y')
+axs[0][0].plot(np.cumsum(np.mean(opt_reward - gpucb_reward, axis = 0)), 'y')
 
-# axs[0][0].legend(["Reward GPTS", "Reward GPUCB","Std GPTS","Std GPUCB","Regret GPTS","Regret GPUCB"])
-axs[0][0].legend(["Reward GPTS", "Std GPTS","Regret GPTS"])
+axs[0][0].legend(["Reward GPTS", "Reward GPUCB","Std GPTS","Std GPUCB","Regret GPTS","Regret GPUCB"])
 axs[0][0].set_title("Cumulative GPTS vs GPUCB")
 
 
@@ -110,29 +110,29 @@ axs[0][0].set_title("Cumulative GPTS vs GPUCB")
 axs[0][1].set_xlabel("t")
 axs[0][1].set_ylabel("Reward")
 axs[0][1].plot(np.mean(gpts_reward, axis = 0), 'r')
-# axs[0][1].plot(np.mean(gpucb_reward, axis = 0), 'm')
-axs[0][1].legend(["Reward GPTS"])# , "Reward GPUCB"])
-axs[0][1].set_title("Instantaneous Reward GPTS")# vs GPUCB")
+axs[0][1].plot(np.mean(gpucb_reward, axis = 0), 'm')
+axs[0][1].legend(["Reward GPTS", "Reward GPUCB"])
+axs[0][1].set_title("Instantaneous Reward GPTS vs GPUCB")
 
 
 axs[1][0].set_xlabel("t")
 axs[1][0].set_ylabel("Regret")
 axs[1][0].plot(np.mean(opt_reward - gpts_reward, axis = 0), 'g')
-# axs[1][0].plot(np.mean(opt_reward - gpucb_reward, axis = 0), 'y')
-axs[1][0].legend(["Regret GPTS"]) #,"Regret GPUCB"])
-axs[1][0].set_title("Instantaneous Std GPTS") # vs GPUCB")
+axs[1][0].plot(np.mean(opt_reward - gpucb_reward, axis = 0), 'y')
+axs[1][0].legend(["Regret GPTS", "Regret GPUCB"])
+axs[1][0].set_title("Instantaneous Std GPTS vs GPUCB")
 
 #We plot only the standard deviation of the reward beacuse the standard deviation of the regret is the same
 
 axs[1][1].set_xlabel("t")
 axs[1][1].set_ylabel("Reward")
 axs[1][1].plot(np.std(gpts_reward, axis = 0), 'b')   
-# axs[1][1].plot(np.std(gpucb_reward, axis = 0), 'c')
-axs[1][1].legend(["Std GPTS"]) #,"Std GPUCB"])
-axs[1][1].set_title("Instantaneous Reward GPTS") # vs GPUCB")
+axs[1][1].plot(np.std(gpucb_reward, axis = 0), 'c')
+axs[1][1].legend(["Std GPTS", "Std GPUCB"])
+axs[1][1].set_title("Instantaneous Reward GPTS vs GPUCB")
 
 
 plt.show()
 print(gpts_reward)
-# print(gpucb_reward)
+print(gpucb_reward)
 print(opt_reward)
