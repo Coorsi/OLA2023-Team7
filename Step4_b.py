@@ -18,11 +18,11 @@ prices = price * np.array([1, 2, 3, 4, 5])
 margins = np.array([prices[i] - cost_of_product for i in range(n_prices)])
 classes = np.array([0, 1, 2, 3])
 # C1   C2   C3   C4
-conversion_rate = np.array([[0.93, 0.95, 0.77, 0.77],  # 1*price
-                            [0.82, 0.84, 0.42, 0.42],  # 2*price
-                            [0.51, 0.64, 0.29, 0.29],  # 3*price
-                            [0.38, 0.50, 0.21, 0.21],  # 4*price
-                            [0.09, 0.18, 0.11, 0.11]  # 5*price
+conversion_rate = np.array([[0.83, 0.96, 0.77, 0.77],  # 1*price
+                            [0.77, 0.89, 0.42, 0.42],  # 2*price
+                            [0.51, 0.68, 0.29, 0.29],  # 3*price
+                            [0.24, 0.54, 0.21, 0.21],  # 4*price
+                            [0.09, 0.21, 0.11, 0.11]  # 5*price
                             ])
 
 earnings = np.zeros([5, 4])  # conv_rate * margin
@@ -33,13 +33,13 @@ normEarnings = earnings.copy()
 normEarnings = normEarnings - np.min(normEarnings)
 normEarnings = normEarnings / np.max(normEarnings)
 
-n1 = lambda x: 5 * (1 - np.exp(-4 * x + 2 * x ** 3))
-n2 = lambda x: 5 * (1 - np.exp(-2 * x + 2 * x ** 3))
+n1 = lambda x: 5 * (1 - np.exp(-5 * x + 2 * x ** 3))
+n2 = lambda x: 9 * (1 - np.exp(-2 * x + 2 * x ** 3))
 n3 = lambda x: 5 * (1 - np.exp(-3 * x + 2 * x ** 3))
 
 cc1 = lambda x: 2 * (1 - np.exp(-3 * x + 2 * x ** 2))
 cc2 = lambda x: 2 * (1 - np.exp(-2 * x + 2 * x ** 2))
-cc3 = lambda x: 2 * (1 - np.exp(-3 * x + 2 * x ** 2))
+cc3 = lambda x: 2 * (1 - np.exp(-2.5 * x + 2 * x ** 2))
 
 n = [n1, n2, n3, n3]
 cc = [cc1, cc2, cc3, cc3]
@@ -66,12 +66,11 @@ print(optimal_bids[1])
 print('\n\n')
 
 # EXPERIMENT BEGIN FOR ESTIMATING THE OPTIMAL PRICE
-T = 200
+T = 365
 
-n_experiments = 15
-noise_std = 0.4
+n_experiments = 25
+noise_std = 0.5
 
-dataset = []
 n_context, cc_context = 0, 0
 probabilities = [0.5, 0.3]
 ts_rewards_per_experiments = [[] for i in range(n_experiments)]
@@ -94,55 +93,47 @@ for e in tqdm(range(n_experiments)):
                     Context([1, 1], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
                             GPUCB_Learner(n_arms=n_bids, arms=bids))
                     ]
-    contexts = [contexts_tot[0]]
     context_generator = Context_generator(margins)
-    t_start = 0
+    contexts = [contexts_tot[0]]
     gpts_reward = np.zeros(T)
     gpucb_reward = np.zeros(T)
     for t in range(0, T):
-        # if t % 60 == 0 and t != 0:
-        if t == 80:
+        if t % 14 == 0 and t != 0:
+            contexts = []
             print(context_generator.select_context())
+            for i in context_generator.select_context():
+                contexts.append(contexts_tot[i])
 
-            t_start = t
-            contexts = [contexts_tot[3], contexts_tot[4], contexts_tot[5], contexts_tot[6]]
-
+        features = [np.random.binomial(1, probabilities[0]), np.random.binomial(1, probabilities[1])]
         for i in range(len(contexts)):
-            features = contexts[i].features.copy()
-            if features[0] is None:
-                features[0] = np.random.binomial(1, probabilities[0])
-            if features[1] is None:
-                features[1] = np.random.binomial(1, probabilities[1])
-            index = features[1] + (2 * features[0])
+            if (contexts[i].features[0] == features[0] or contexts[i].features[
+                     0] is None) and (contexts[i].features[1] == features[1] or contexts[i].features[1] is None):
+                index = features[1] + (2 * features[0])
+                pulled_arm_price = contexts[i].ts_learner.pull_arm()
+                reward = env_array[index].round(pulled_arm_price)
+                sampled_normEarning = np.random.beta(contexts[i].ts_learner.beta_parameters[pulled_arm_price, 0],
+                                                     contexts[i].ts_learner.beta_parameters[pulled_arm_price, 1])
+                # print(sampled_normEarning)
+                contexts[i].ts_learner.update(pulled_arm_price, reward)
 
-            pulled_arm_price = contexts[i].ts_learner.pull_arm()
-            reward = env_array[index].round(pulled_arm_price)
-            sampled_normEarning = np.random.beta(contexts[i].ts_learner.beta_parameters[pulled_arm_price, 0],
-                                                 contexts[i].ts_learner.beta_parameters[pulled_arm_price, 1])
-            # print(sampled_normEarning)
-            contexts[i].ts_learner.update(pulled_arm_price, reward)
+                pulled_arm_bid = contexts[i].gpts_learner.pull_arm()
+                drawed_n = env_array[index].draw_n(bids[pulled_arm_bid], noise_std)
+                drawed_cc = env_array[index].draw_cc(bids[pulled_arm_bid], noise_std)
 
-            pulled_arm_bid = contexts[i].gpts_learner.pull_arm()
-            drawed_n = env_array[index].draw_n(bids[pulled_arm_bid], noise_std)
-            drawed_cc = env_array[index].draw_cc(bids[pulled_arm_bid], noise_std)
+                reward_tot = drawed_n * sampled_normEarning - drawed_cc
+                contexts[i].gpts_learner.update(pulled_arm_bid, reward_tot)
 
-            reward_tot = drawed_n * sampled_normEarning - drawed_cc
-            contexts[i].gpts_learner.update(pulled_arm_bid, reward_tot)
+                context_generator.update_dataset(features[0], features[1], reward, drawed_n, drawed_cc,
+                                                 pulled_arm_price, pulled_arm_bid)
+                gpts_reward[t] = reward_tot
 
-            context_generator.update_dataset(features[0], features[1], reward, drawed_n, drawed_cc,
-                                             pulled_arm_price, pulled_arm_bid)
-            gpts_reward[t] += reward_tot
+                pulled_arm_bid = contexts[i].gpucb_learner.pull_arm()
+                drawed_n_ucb = env_array[index].draw_n(bids[pulled_arm_bid], noise_std)
+                drawed_cc_ucb = env_array[index].draw_cc(bids[pulled_arm_bid], noise_std)
+                reward_tot = drawed_n_ucb * sampled_normEarning - drawed_cc_ucb
+                contexts[i].gpucb_learner.update(pulled_arm_bid, reward_tot)
 
-            pulled_arm_bid = contexts[i].gpucb_learner.pull_arm()
-            drawed_n_ucb = env_array[index].draw_n(bids[pulled_arm_bid], noise_std)
-            drawed_cc_ucb = env_array[index].draw_cc(bids[pulled_arm_bid], noise_std)
-            reward_tot = drawed_n_ucb * sampled_normEarning - drawed_cc_ucb
-            contexts[i].gpucb_learner.update(pulled_arm_bid, reward_tot)
-
-            gpucb_reward[t] += reward_tot
-
-        gpts_reward[t] = gpts_reward[t] / len(contexts)
-        gpucb_reward[t] = gpucb_reward[t] / len(contexts)
+                gpucb_reward[t] = reward_tot
 
     gpts_rewards[e] = gpts_reward
     gpucb_rewards[e] = gpucb_reward
