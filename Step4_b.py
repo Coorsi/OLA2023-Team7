@@ -66,49 +66,43 @@ print(optimal_bids[1])
 print('\n\n')
 
 # EXPERIMENT BEGIN FOR ESTIMATING THE OPTIMAL PRICE
-T = 100
+T = 200
 
-n_experiments = 10
-noise_std = 0.3
+n_experiments = 15
+noise_std = 0.4
 
 dataset = []
 n_context, cc_context = 0, 0
 probabilities = [0.5, 0.3]
 ts_rewards_per_experiments = [[] for i in range(n_experiments)]
-gpts_rewards = [[] for i in range(n_experiments)]
-gpucb_rewards = [[] for i in range(n_experiments)]
-contexts_tot = [Context([None, None], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
-                        GPUCB_Learner(n_arms=n_bids, arms=bids)),
-                Context([0, None], TS_Learner(n_arms=n_prices),
-                        GPTS_Learner(n_arms=n_bids, arms=bids), GPUCB_Learner(n_arms=n_bids, arms=bids)),
-                Context([1, None], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
-                        GPUCB_Learner(n_arms=n_bids, arms=bids)),
-                Context([0, 0], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
-                        GPUCB_Learner(n_arms=n_bids, arms=bids)),
-                Context([0, 1], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
-                        GPUCB_Learner(n_arms=n_bids, arms=bids)),
-                Context([1, 0], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
-                        GPUCB_Learner(n_arms=n_bids, arms=bids)),
-                Context([1, 1], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
-                        GPUCB_Learner(n_arms=n_bids, arms=bids))
-                ]
+gpts_rewards = np.zeros((n_experiments, T))
+gpucb_rewards = np.zeros((n_experiments, T))
 
 for e in tqdm(range(n_experiments)):
+    contexts_tot = [Context([None, None], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
+                            GPUCB_Learner(n_arms=n_bids, arms=bids)),
+                    Context([0, None], TS_Learner(n_arms=n_prices),
+                            GPTS_Learner(n_arms=n_bids, arms=bids), GPUCB_Learner(n_arms=n_bids, arms=bids)),
+                    Context([1, None], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
+                            GPUCB_Learner(n_arms=n_bids, arms=bids)),
+                    Context([0, 0], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
+                            GPUCB_Learner(n_arms=n_bids, arms=bids)),
+                    Context([0, 1], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
+                            GPUCB_Learner(n_arms=n_bids, arms=bids)),
+                    Context([1, 0], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
+                            GPUCB_Learner(n_arms=n_bids, arms=bids)),
+                    Context([1, 1], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
+                            GPUCB_Learner(n_arms=n_bids, arms=bids))
+                    ]
     contexts = [contexts_tot[0]]
     context_generator = Context_generator(margins)
     t_start = 0
+    gpts_reward = np.zeros(T)
+    gpucb_reward = np.zeros(T)
     for t in range(0, T):
         # if t % 60 == 0 and t != 0:
-        if t == 60:
+        if t == 80:
             print(context_generator.select_context())
-            gpts_reward = np.zeros(t)
-            gpucb_reward = np.zeros(t)
-            for i in range(len(contexts)):
-                gpts_reward += contexts[i].gpts_learner.collected_rewards[t_start:t]
-                gpucb_reward += contexts[i].gpucb_learner.collected_rewards[t_start:t]
-
-            gpts_rewards[e] += list(gpts_reward / len(contexts))
-            gpucb_rewards[e] += list(gpucb_reward / len(contexts))
 
             t_start = t
             contexts = [contexts_tot[3], contexts_tot[4], contexts_tot[5], contexts_tot[6]]
@@ -137,6 +131,7 @@ for e in tqdm(range(n_experiments)):
 
             context_generator.update_dataset(features[0], features[1], reward, drawed_n, drawed_cc,
                                              pulled_arm_price, pulled_arm_bid)
+            gpts_reward[t] += reward_tot
 
             pulled_arm_bid = contexts[i].gpucb_learner.pull_arm()
             drawed_n_ucb = env_array[index].draw_n(bids[pulled_arm_bid], noise_std)
@@ -144,14 +139,13 @@ for e in tqdm(range(n_experiments)):
             reward_tot = drawed_n_ucb * sampled_normEarning - drawed_cc_ucb
             contexts[i].gpucb_learner.update(pulled_arm_bid, reward_tot)
 
-    gpts_reward = np.zeros(T-t_start)
-    gpucb_reward = np.zeros(T-t_start)
-    for i in range(len(contexts)):
-        gpts_reward += contexts[i].gpts_learner.collected_rewards[0:T-t_start]
-        gpucb_reward += contexts[i].gpucb_learner.collected_rewards[0:T-t_start]
+            gpucb_reward[t] += reward_tot
 
-    gpts_rewards[e] += list(gpts_reward / len(contexts))
-    gpucb_rewards[e] += list(gpucb_reward / len(contexts))
+        gpts_reward[t] = gpts_reward[t] / len(contexts)
+        gpucb_reward[t] = gpucb_reward[t] / len(contexts)
+
+    gpts_rewards[e] = gpts_reward
+    gpucb_rewards[e] = gpucb_reward
 
 
 gpts_rewards = np.array(gpts_rewards)
