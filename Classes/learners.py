@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 import math
-
+import random
 import warnings
 from sklearn.exceptions import ConvergenceWarning
 
@@ -238,10 +238,21 @@ class EXP3_Learner(Learner):
     theSum = float(sum(self.weights))
     return tuple((1.0 - self.gamma) * (w / theSum) + (self.gamma / len(self.weights)) for w in self.weights)
 
+  def draw(self, weights):
+    choice = random.uniform(0, sum(self.weights))
+    choiceIndex = 0
+
+    for weight in self.weights:
+        choice -= weight
+        if choice <= 0:
+            return choiceIndex
+
+        choiceIndex += 1
+
   def pull_arm(self):
     self.probabilityDistribution = self.distr()
-    idx = choices(self.arm_index, self.probabilityDistribution)
-    return idx[0]   
+    idx = self.draw(self.probabilityDistribution)
+    return idx
 
   def update(self, pulled_arm, reward):
     self.t +=1

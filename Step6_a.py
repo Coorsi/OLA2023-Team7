@@ -68,7 +68,7 @@ for c in classes:
 
 #EXPERIMENT BEGIN
 
-n_experiments = 100
+n_experiments = 300
 
 M = 100 #number of steps to obtain reference point in change detection (for CUSUM)
 eps = 0.1 #epsilon for deviation from reference point in change detection (for CUSUM)
@@ -85,9 +85,13 @@ optimal_bid_phase1 = bids[int(optimal_bid_index_phase1)] #we consider the same b
 
 opt_index_phase2 = int(clairvoyant(classes,bids,prices, margins,conversion_rate_phase2,env_array)[0][0])
 opt_phase2 = normEarnings_phase2[opt_index_phase2][0]
+optimal_bid_index_phase2 = clairvoyant(classes,bids,prices, margins,conversion_rate_phase2,env_array)[1][0]
+optimal_bid_phase2 = bids[int(optimal_bid_index_phase2)] #we consider the same bid (?)
 
 opt_index_phase3 = int(clairvoyant(classes,bids,prices, margins,conversion_rate_phase3,env_array)[0][0])
 opt_phase3 = normEarnings_phase3[opt_index_phase3][0]
+optimal_bid_index_phase3 = clairvoyant(classes,bids,prices, margins,conversion_rate_phase3,env_array)[1][0]
+optimal_bid_phase3 = bids[int(optimal_bid_index_phase3)] #we consider the same bid (?)
 
 for e in tqdm(range(n_experiments)):
   env_swucb = deepcopy(env_array[0])
@@ -95,7 +99,7 @@ for e in tqdm(range(n_experiments)):
   env_exp3 = deepcopy(env_array[0])
   swucb_learner = SWUCB_Learner(n_arms = n_prices, window_size = int(T/3))
   cusum_learner = CUSUM_UCB_Learner(n_arms = n_prices, M = M, eps = eps, h = h)
-  exp3_learner = EXP3_Learner(n_arms = n_prices, gamma = 0.01)
+  exp3_learner = EXP3_Learner(n_arms = n_prices, gamma = 0.4)
   for t in range(0, T):
 
     pulled_arm = swucb_learner.pull_arm()
@@ -122,24 +126,24 @@ exp3_rewards_per_experiments = np.array(exp3_rewards_per_experiments)
 fig, axs = plt.subplots(2,2,figsize=(14,7))
 
 opt_phase1 = opt_phase1 * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
-opt_phase2 = opt_phase2 * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
-opt_phase3 = opt_phase3 * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
+opt_phase2 = opt_phase2 * env_array[0].n(optimal_bid_phase2) - env_array[0].cc(optimal_bid_phase2)
+opt_phase3 = opt_phase3 * env_array[0].n(optimal_bid_phase3) - env_array[0].cc(optimal_bid_phase3)
 opt = np.ones([T]) 
 opt[:int(T/3)] = opt[:int(T/3)] * opt_phase1 
 opt[int(T/3):2*int(T/3)] = opt[int(T/3):2*int(T/3)]* opt_phase2 
 opt[2*int(T/3):] = opt[2*int(T/3):] * opt_phase3
 
 swucb_rewards_per_experiments[:int(T/3)] = swucb_rewards_per_experiments[:int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
-swucb_rewards_per_experiments[int(T/3):2*int(T/3)] = swucb_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
-swucb_rewards_per_experiments[2*int(T/3):] = swucb_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
+swucb_rewards_per_experiments[int(T/3):2*int(T/3)] = swucb_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase2) - env_array[0].cc(optimal_bid_phase2)
+swucb_rewards_per_experiments[2*int(T/3):] = swucb_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase3) - env_array[0].cc(optimal_bid_phase3)
 
 cusum_rewards_per_experiments[:int(T/3)] = cusum_rewards_per_experiments[:int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
-cusum_rewards_per_experiments[int(T/3):2*int(T/3)] = cusum_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
-cusum_rewards_per_experiments[2*int(T/3):] = cusum_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
+cusum_rewards_per_experiments[int(T/3):2*int(T/3)] = cusum_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase2) - env_array[0].cc(optimal_bid_phase2)
+cusum_rewards_per_experiments[2*int(T/3):] = cusum_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase3) - env_array[0].cc(optimal_bid_phase3)
 
 exp3_rewards_per_experiments[:int(T/3)] = exp3_rewards_per_experiments[:int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
-exp3_rewards_per_experiments[int(T/3):2*int(T/3)] = exp3_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
-exp3_rewards_per_experiments[2*int(T/3):] = exp3_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
+exp3_rewards_per_experiments[int(T/3):2*int(T/3)] = exp3_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase2) - env_array[0].cc(optimal_bid_phase2)
+exp3_rewards_per_experiments[2*int(T/3):] = exp3_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase3) - env_array[0].cc(optimal_bid_phase3)
 
 
 axs[0][0].set_xlabel("t")
@@ -158,7 +162,7 @@ axs[0][0].plot(np.cumsum(np.mean(opt - cusum_rewards_per_experiments, axis = 0))
 axs[0][0].plot(np.cumsum(np.mean(opt - exp3_rewards_per_experiments, axis = 0)), 'hotpink')
 
 axs[0][0].legend(["Reward SWUCB","Reward CUSUM", "Reward EXP3", "Std SWUCB","Std CUSUM", "Std EXP3", "Regret SWUCB","Regret CUSUM", "Regret EXP3"])
-axs[0][0].set_title("Cumulative SWUCB vs CUSUM vs EXP3")
+axs[0][0].set_title("Cumulative SWUCB vs CUSUM vs EXP3(gamma = 0.85)")
 
 axs[0][1].set_xlabel("t")
 axs[0][1].set_ylabel("Regret")
@@ -166,20 +170,20 @@ axs[0][1].plot(np.mean(swucb_rewards_per_experiments, axis = 0), 'r')
 axs[0][1].plot(np.mean(cusum_rewards_per_experiments, axis = 0), 'm')
 axs[0][1].plot(np.mean(exp3_rewards_per_experiments, axis = 0), 'b')
 axs[0][1].legend(["Reward SWUCB", "Reward CUSUM", "Reward EXP3"])
-axs[0][1].set_title("Instantaneous Reward SWUCB vs CUSUM vs EXP3")
+axs[0][1].set_title("Instantaneous Reward SWUCB vs CUSUM vs EXP3(gamma = 0.85)")
 
 #We plot only the standard deviation of the reward beacuse the standard deviation of the regret is the same
 axs[1][0].plot(np.std(swucb_rewards_per_experiments, axis = 0), 'b')   
 axs[1][0].plot(np.std(cusum_rewards_per_experiments, axis = 0), 'c')
 axs[1][0].plot(np.std(exp3_rewards_per_experiments, axis = 0), 'r')
 axs[1][0].legend(["Std SWUCB","Std CUSUM", "Std EXP3"])
-axs[1][0].set_title("Instantaneous Std SWUCB VS CUSUM vs EXP3")
+axs[1][0].set_title("Instantaneous Std SWUCB VS CUSUM vs EXP3(gamma = 0.85)")
 
 axs[1][1].plot(np.mean(opt - swucb_rewards_per_experiments, axis = 0), 'g')
 axs[1][1].plot(np.mean(opt - cusum_rewards_per_experiments, axis = 0), 'y')
 axs[1][1].plot(np.mean(opt - exp3_rewards_per_experiments, axis = 0), 'b')
 axs[1][1].legend(["Regret SWUCB","Regret CUSUM", "Regret EXP3"])
-axs[1][1].set_title("Instantaneous Regret SWUCB vs CUSUM vs EXP3")
+axs[1][1].set_title("Instantaneous Regret SWUCB vs CUSUM vs EXP3(gamma = 0.85)")
 
 
 plt.show()
