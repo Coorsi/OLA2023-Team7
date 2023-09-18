@@ -68,7 +68,7 @@ for c in classes:
 
 #EXPERIMENT BEGIN
 
-n_experiments = 300
+n_experiments = 100
 
 M = 100 #number of steps to obtain reference point in change detection (for CUSUM)
 eps = 0.1 #epsilon for deviation from reference point in change detection (for CUSUM)
@@ -85,13 +85,9 @@ optimal_bid_phase1 = bids[int(optimal_bid_index_phase1)] #we consider the same b
 
 opt_index_phase2 = int(clairvoyant(classes,bids,prices, margins,conversion_rate_phase2,env_array)[0][0])
 opt_phase2 = normEarnings_phase2[opt_index_phase2][0]
-optimal_bid_index_phase2 = clairvoyant(classes,bids,prices, margins,conversion_rate_phase2,env_array)[1][0]
-optimal_bid_phase2 = bids[int(optimal_bid_index_phase2)] #we consider the same bid (?)
 
 opt_index_phase3 = int(clairvoyant(classes,bids,prices, margins,conversion_rate_phase3,env_array)[0][0])
 opt_phase3 = normEarnings_phase3[opt_index_phase3][0]
-optimal_bid_index_phase3 = clairvoyant(classes,bids,prices, margins,conversion_rate_phase3,env_array)[1][0]
-optimal_bid_phase3 = bids[int(optimal_bid_index_phase3)] #we consider the same bid (?)
 
 for e in tqdm(range(n_experiments)):
   env_swucb = deepcopy(env_array[0])
@@ -126,24 +122,24 @@ exp3_rewards_per_experiments = np.array(exp3_rewards_per_experiments)
 fig, axs = plt.subplots(2,2,figsize=(14,7))
 
 opt_phase1 = opt_phase1 * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
-opt_phase2 = opt_phase2 * env_array[0].n(optimal_bid_phase2) - env_array[0].cc(optimal_bid_phase2)
-opt_phase3 = opt_phase3 * env_array[0].n(optimal_bid_phase3) - env_array[0].cc(optimal_bid_phase3)
+opt_phase2 = opt_phase2 * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
+opt_phase3 = opt_phase3 * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
 opt = np.ones([T]) 
 opt[:int(T/3)] = opt[:int(T/3)] * opt_phase1 
 opt[int(T/3):2*int(T/3)] = opt[int(T/3):2*int(T/3)]* opt_phase2 
 opt[2*int(T/3):] = opt[2*int(T/3):] * opt_phase3
 
 swucb_rewards_per_experiments[:int(T/3)] = swucb_rewards_per_experiments[:int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
-swucb_rewards_per_experiments[int(T/3):2*int(T/3)] = swucb_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase2) - env_array[0].cc(optimal_bid_phase2)
-swucb_rewards_per_experiments[2*int(T/3):] = swucb_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase3) - env_array[0].cc(optimal_bid_phase3)
+swucb_rewards_per_experiments[int(T/3):2*int(T/3)] = swucb_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
+swucb_rewards_per_experiments[2*int(T/3):] = swucb_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
 
 cusum_rewards_per_experiments[:int(T/3)] = cusum_rewards_per_experiments[:int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
-cusum_rewards_per_experiments[int(T/3):2*int(T/3)] = cusum_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase2) - env_array[0].cc(optimal_bid_phase2)
-cusum_rewards_per_experiments[2*int(T/3):] = cusum_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase3) - env_array[0].cc(optimal_bid_phase3)
+cusum_rewards_per_experiments[int(T/3):2*int(T/3)] = cusum_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
+cusum_rewards_per_experiments[2*int(T/3):] = cusum_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
 
 exp3_rewards_per_experiments[:int(T/3)] = exp3_rewards_per_experiments[:int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
-exp3_rewards_per_experiments[int(T/3):2*int(T/3)] = exp3_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase2) - env_array[0].cc(optimal_bid_phase2)
-exp3_rewards_per_experiments[2*int(T/3):] = exp3_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase3) - env_array[0].cc(optimal_bid_phase3)
+exp3_rewards_per_experiments[int(T/3):2*int(T/3)] = exp3_rewards_per_experiments[int(T/3):2*int(T/3)] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
+exp3_rewards_per_experiments[2*int(T/3):] = exp3_rewards_per_experiments[2*int(T/3):] * env_array[0].n(optimal_bid_phase1) - env_array[0].cc(optimal_bid_phase1)
 
 
 axs[0][0].set_xlabel("t")
