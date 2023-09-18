@@ -28,33 +28,35 @@ class TS_Learner(Learner):
     super().__init__(n_arms)
     self.beta_parameters = np.ones((n_arms,2))
 
-  def pull_arm(self):
-    idx = np.argmax(np.random.beta(self.beta_parameters[:,0], self.beta_parameters[:,1]))
+  def pull_arm(self, margins):
+    idx = np.argmax(np.random.beta(self.beta_parameters[:, 0], self.beta_parameters[:, 1]) * margins)
     return idx
 
   def update(self, pulled_arm, reward):
-    self.t +=1
-    self.update_observations(pulled_arm, reward)
-    self.beta_parameters[pulled_arm, 0] = self.beta_parameters[pulled_arm, 0] + reward
-    self.beta_parameters[pulled_arm, 1] = self.beta_parameters[pulled_arm, 1] + 1.0 - reward
+    self.t += 1
+    self.update_observations(pulled_arm, reward[2])
+    self.beta_parameters[pulled_arm, 0] = self.beta_parameters[pulled_arm, 0] + reward[0]
+    self.beta_parameters[pulled_arm, 1] = self.beta_parameters[pulled_arm, 1] + reward[1]
 
 class UCB1_Learner(Learner):
   def __init__(self, n_arms):
     super().__init__(n_arms)
-    self.emprical_means = np.zeros(n_arms)
+    self.empirical_means = np.zeros(n_arms)
     self.confidence = np.array([np.inf]*n_arms)
+    self.n_pulled = np.zeros(n_arms)             # how many times an arm was pulled
 
-  def pull_arm(self):
-    upper_conf = self.emprical_means + self.confidence
+  def pull_arm(self, margins):
+    upper_conf = (self.empirical_means + self.confidence) * margins
     return np.random.choice(np.where(upper_conf == upper_conf.max())[0])
 
   def update(self, pulled_arm, reward):
     self.t += 1
-    self.emprical_means[pulled_arm] = (self.emprical_means[pulled_arm]*(self.t-1)+reward)/self.t
+    self.empirical_means[pulled_arm] = (self.empirical_means[pulled_arm] * self.n_pulled[pulled_arm] + reward[0]) / (
+                                                                self.n_pulled[pulled_arm] + reward[0] + reward[1])
     for a in range(self.n_arms):
-      n_samples = len(self.reward_per_arm[a])
-      self.confidence[a] = (2*np.log(self.t)/n_samples)**0.5 if n_samples > 0 else np.inf
-    self.update_observations(pulled_arm, reward)
+      self.confidence[a] = (2*np.log(self.t)/self.n_pulled[a])**0.5 if self.n_pulled[a] > 0 else np.inf
+    self.update_observations(pulled_arm, reward[2])
+    self.n_pulled[pulled_arm] += reward[0] + reward[1]
 
 
 class SWTS_Learner(TS_Learner):
@@ -130,7 +132,7 @@ class GPUCB_Learner(Learner):
     super().__init__(n_arms)
     self.arms = arms
     self.means = np.zeros(n_arms)
-    self.sigmas = np.ones(n_arms)*np.inf
+    self.sigmas = np.ones(n_arms)*10
     self.pulled_arms = []
     alpha = 1
     kernel = C(1e1, (1e-7, 1e7)) * RBF(1e1, (1e-10, 1e7))

@@ -13,10 +13,10 @@ def clairvoyant(classes, bids, prices, margins, conversion_rate, env_array):
     final_rewards = []
     for c in classes:
       rewards = np.array([])
+      p = int(maxPricesIndices[c])
       for bid in bids:
-        p = int(maxPricesIndices[c])
-        single_reward = env_array[c].n(bid)*conversion_rate[p,c]*margins[p] - env_array[c].cc(bid)
-        rewards = np.append(rewards,single_reward)
+        single_reward = env_array[c].n(bid) * conversion_rate[p, c] * margins[p] - env_array[c].cc(bid)
+        rewards = np.append(rewards, single_reward)
       bestBidsIndices = np.append(bestBidsIndices, np.argmax(rewards))
       final_rewards.append(np.max(rewards))
     bestBids = bids[bestBidsIndices.astype(int)]

@@ -25,14 +25,6 @@ conversion_rate = np.array([[0.83, 0.96, 0.77, 0.77],  # 1*price
                             [0.09, 0.21, 0.11, 0.11]  # 5*price
                             ])
 
-earnings = np.zeros([5, 4])  # conv_rate * margin
-for row in range(5):
-    earnings[row, :] = conversion_rate[row, :] * margins[row]
-
-normEarnings = earnings.copy()
-normEarnings = normEarnings - np.min(normEarnings)
-normEarnings = normEarnings / np.max(normEarnings)
-
 n1 = lambda x: 5 * (1 - np.exp(-5 * x + 2 * x ** 3))
 n2 = lambda x: 9 * (1 - np.exp(-2 * x + 2 * x ** 3))
 n3 = lambda x: 5 * (1 - np.exp(-3 * x + 2 * x ** 3))
@@ -46,7 +38,7 @@ cc = [cc1, cc2, cc3, cc3]
 
 env_array = []
 for c in classes:
-    env_array.append(Environment(n_prices, normEarnings[:, c], n[c], cc[c]))
+    env_array.append(Environment(n_prices, conversion_rate[:, c], n[c], cc[c]))
 
 opt_indexes = []
 opts = []
@@ -54,7 +46,7 @@ for i in classes:
     opt_indexes.append(int(clairvoyant(classes, bids, prices, margins, conversion_rate, env_array)[0][i]))
 # opt = normEarnings[opt_index][0]
 for i in classes:
-    opts.append(normEarnings[opt_indexes[i]][i])
+    opts.append(conversion_rate[opt_indexes[i]][i] * margins[opt_indexes[i]])
 
 optimal_bids = []
 for i in classes:
@@ -68,8 +60,8 @@ print('\n\n')
 # EXPERIMENT BEGIN FOR ESTIMATING THE OPTIMAL PRICE
 T = 365
 
-n_experiments = 25
-noise_std = 0.5
+n_experiments = 40
+noise_std = 0.6
 
 n_context, cc_context = 0, 0
 probabilities = [0.5, 0.3]
@@ -79,19 +71,26 @@ gpucb_rewards = np.zeros((n_experiments, T))
 
 for e in tqdm(range(n_experiments)):
     contexts_tot = [Context([None, None], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
-                            GPUCB_Learner(n_arms=n_bids, arms=bids)),
-                    Context([0, None], TS_Learner(n_arms=n_prices),
+                            GPUCB_Learner(n_arms=n_bids, arms=bids), TS_Learner(n_arms=n_prices),
+                            GPTS_Learner(n_arms=n_bids, arms=bids), GPUCB_Learner(n_arms=n_bids, arms=bids)),
+                    Context([0, None], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
+                            GPUCB_Learner(n_arms=n_bids, arms=bids), TS_Learner(n_arms=n_prices),
                             GPTS_Learner(n_arms=n_bids, arms=bids), GPUCB_Learner(n_arms=n_bids, arms=bids)),
                     Context([1, None], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
-                            GPUCB_Learner(n_arms=n_bids, arms=bids)),
+                            GPUCB_Learner(n_arms=n_bids, arms=bids), TS_Learner(n_arms=n_prices),
+                            GPTS_Learner(n_arms=n_bids, arms=bids), GPUCB_Learner(n_arms=n_bids, arms=bids)),
                     Context([0, 0], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
-                            GPUCB_Learner(n_arms=n_bids, arms=bids)),
+                            GPUCB_Learner(n_arms=n_bids, arms=bids), TS_Learner(n_arms=n_prices),
+                            GPTS_Learner(n_arms=n_bids, arms=bids), GPUCB_Learner(n_arms=n_bids, arms=bids)),
                     Context([0, 1], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
-                            GPUCB_Learner(n_arms=n_bids, arms=bids)),
+                            GPUCB_Learner(n_arms=n_bids, arms=bids), TS_Learner(n_arms=n_prices),
+                            GPTS_Learner(n_arms=n_bids, arms=bids), GPUCB_Learner(n_arms=n_bids, arms=bids)),
                     Context([1, 0], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
-                            GPUCB_Learner(n_arms=n_bids, arms=bids)),
+                            GPUCB_Learner(n_arms=n_bids, arms=bids), TS_Learner(n_arms=n_prices),
+                            GPTS_Learner(n_arms=n_bids, arms=bids), GPUCB_Learner(n_arms=n_bids, arms=bids)),
                     Context([1, 1], TS_Learner(n_arms=n_prices), GPTS_Learner(n_arms=n_bids, arms=bids),
-                            GPUCB_Learner(n_arms=n_bids, arms=bids))
+                            GPUCB_Learner(n_arms=n_bids, arms=bids), TS_Learner(n_arms=n_prices),
+                            GPTS_Learner(n_arms=n_bids, arms=bids), GPUCB_Learner(n_arms=n_bids, arms=bids))
                     ]
     context_generator = Context_generator(margins)
     contexts = [contexts_tot[0]]
