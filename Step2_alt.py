@@ -131,15 +131,15 @@ axs[1][0].set_ylabel("Regret")
 axs[1][0].plot(np.mean(opt_reward - gpts_reward, axis=0), 'g')
 axs[1][0].plot(np.mean(opt_reward - gpucb_reward, axis=0), 'y')
 axs[1][0].legend(["Regret GPTS", "Regret GPUCB"])
-axs[1][0].set_title("Instantaneous Std GPTS vs GPUCB")
+axs[1][0].set_title("Instantaneous Regret GPTS vs GPUCB")
 
 # We plot only the standard deviation of the reward beacuse the standard deviation of the regret is the same
 
 axs[1][1].set_xlabel("t")
-axs[1][1].set_ylabel("Reward")
+axs[1][1].set_ylabel("Std")
 axs[1][1].plot(np.std(gpts_reward, axis=0), 'b')
 axs[1][1].plot(np.std(gpucb_reward, axis=0), 'c')
 axs[1][1].legend(["Std GPTS", "Std GPUCB"])
-axs[1][1].set_title("Instantaneous Reward GPTS vs GPUCB")
+axs[1][1].set_title("Instantaneous Std GPTS vs GPUCB")
 
 plt.show()
