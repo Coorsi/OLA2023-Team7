@@ -30,7 +30,7 @@ for c in classes:
 # EXPERIMENT BEGIN
 T = 365
 
-n_experiments = 20
+n_experiments = 3
 n_noise_std = 1.5
 cc_noise_std = 1
 

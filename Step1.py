@@ -37,8 +37,6 @@ for c in classes:
   env_array.append(Environment(n_prices, normEarnings[:,c], c))
 
 
-
-
 #EXPERIMENT BEGIN
 T = 365
 

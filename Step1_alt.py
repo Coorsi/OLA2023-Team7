@@ -82,7 +82,6 @@ ucb1_rewards_per_experiments = np.array(ucb1_rewards_per_experiments)
 fig, axs = plt.subplots(2, 2, figsize=(14, 7))
 
 axs[0][0].set_xlabel("t")
-axs[0][0].set_ylabel("Regret")
 axs[0][0].plot(np.cumsum(np.mean(ts_rewards_per_experiments, axis=0)), 'r')
 axs[0][0].plot(np.cumsum(np.mean(ucb1_rewards_per_experiments, axis=0)), 'm')
 
@@ -97,7 +96,7 @@ axs[0][0].legend(["Reward TS", "Reward UCB1", "Std TS", "Std UCB1", "Regret TS",
 axs[0][0].set_title("Cumulative TS vs UCB1")
 
 axs[0][1].set_xlabel("t")
-axs[0][1].set_ylabel("Regret")
+axs[0][1].set_ylabel("Reward")
 axs[0][1].plot(np.mean(ts_rewards_per_experiments, axis=0), 'r')
 axs[0][1].plot(np.mean(ucb1_rewards_per_experiments, axis=0), 'm')
 axs[0][1].fill_between(range(T), np.mean(ts_rewards_per_experiments, axis=0) - np.std(ts_rewards_per_experiments, axis=0),
@@ -110,11 +109,15 @@ axs[0][1].legend(["Reward TS", "Reward UCB1"])
 axs[0][1].set_title("Instantaneous Reward TS vs UCB1")
 
 # We plot only the standard deviation of the reward beacuse the standard deviation of the regret is the same
+axs[1][0].set_xlabel("t")
+axs[1][0].set_ylabel("Std")
 axs[1][0].plot(np.std(ts_rewards_per_experiments, axis=0), 'b')
 axs[1][0].plot(np.std(ucb1_rewards_per_experiments, axis=0), 'c')
 axs[1][0].legend(["Std TS", "Std UCB1"])
 axs[1][0].set_title("Instantaneous Std TS vs UCB1")
 
+axs[1][1].set_xlabel("t")
+axs[1][1].set_ylabel("Regret")
 axs[1][1].plot(np.mean(opt - ts_rewards_per_experiments, axis=0), 'g')
 axs[1][1].plot(np.mean(opt - ucb1_rewards_per_experiments, axis=0), 'y')
 axs[1][1].fill_between(range(T), np.mean(opt - ts_rewards_per_experiments, axis=0) - np.std(
