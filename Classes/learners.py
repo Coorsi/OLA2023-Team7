@@ -101,7 +101,7 @@ class SWUCB_Learner(UCB1_Learner):
         self.success_round = np.append(self.success_round, reward[0])
         for arm in range(self.n_arms):
             n_samples = np.sum((self.pulled_arms[-self.window_size:] == arm) * self.samples_round[-self.window_size:])
-            cum_rew = np.sum((self.pulled_arms[-self.window_size:] == arm) * self.samples_round[-self.window_size:]) 
+            cum_rew = np.sum((self.pulled_arms[-self.window_size:] == arm) * self.success_round[-self.window_size:]) 
             self.empirical_means[arm] = cum_rew / n_samples if n_samples > 0 else 0
             self.confidence[arm] = (2*np.log(self.t)/n_samples)**0.5 if n_samples > 0 else np.inf
 
