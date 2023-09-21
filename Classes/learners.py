@@ -51,7 +51,8 @@ class UCB1_Learner(Learner):
 
   def update(self, pulled_arm, reward):
     self.t += 1
-    self.empirical_means[pulled_arm] = (self.empirical_means[pulled_arm] * self.n_pulled[pulled_arm] + reward[0]) / (
+    if reward[0] != 0 or reward[1] != 0 or self.n_pulled[pulled_arm] != 0:
+      self.empirical_means[pulled_arm] = (self.empirical_means[pulled_arm] * self.n_pulled[pulled_arm] + reward[0]) / (
                                                                 self.n_pulled[pulled_arm] + reward[0] + reward[1])
     #self.empirical_means[pulled_arm] = (self.empirical_means[pulled_arm]*(self.t-1) + reward[0])/(self.t + reward[0] + reward[1])
     for a in range(self.n_arms):

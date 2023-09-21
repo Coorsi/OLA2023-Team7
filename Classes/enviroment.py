@@ -8,7 +8,7 @@ class Environment():
     self.id_class = id_class
 
   def n(self, x):
-    k=5
+    k=25
     if self.id_class == 0:
       return k * (1-np.exp(-4*x+2*x**3))
     elif self.id_class == 1:
