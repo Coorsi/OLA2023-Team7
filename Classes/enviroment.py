@@ -50,18 +50,29 @@ class Non_Stationary_Environment(Environment):
     self.time = 0
     self.high_frequency_change = high_frequency_change
     self.n_phases = len(self.probabilities)
+    self.current_phase = 0
     if not(self.high_frequency_change):
       self.phases_size = int(horizon/self.n_phases)
     else:
       self.phases_size = int(horizon/(self.n_phases * 4))
 
 
+
   def round(self, pulled_arm):
     if not (self.high_frequency_change):
-      current_phase = int(self.time/self.phases_size)  if int(self.time/self.phases_size) < self.n_phases else self.n_phases - 1
+      if (self.time % self.phases_size == 0):
+        if (self.current_phase == 2):
+          self.current_phase = 0
+        else:
+          self.current_phase += 1
     else:
-      current_phase = int(self.time/self.phases_size)%5
-    p = self.probabilities[current_phase][pulled_arm]
+      if (self.time%18 == 0):
+        if (self.current_phase == 4):
+          self.current_phase = 0
+        else:
+          self.current_phase += 1
+    p = self.probabilities[self.current_phase][pulled_arm]
     reward = np.random.binomial(1, p)
     self.time += 1
     return reward
+

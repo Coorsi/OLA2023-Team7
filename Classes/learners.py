@@ -54,6 +54,7 @@ class UCB1_Learner(Learner):
     if reward[0] != 0 or reward[1] != 0 or self.n_pulled[pulled_arm] != 0:
       self.empirical_means[pulled_arm] = (self.empirical_means[pulled_arm] * self.n_pulled[pulled_arm] + reward[0]) / (
                                                                 self.n_pulled[pulled_arm] + reward[0] + reward[1])
+    #self.empirical_means[pulled_arm] = (self.empirical_means[pulled_arm]*(self.t-1) + reward[0])/(self.t + reward[0] + reward[1])
     for a in range(self.n_arms):
       self.confidence[a] = (2*np.log(self.t)/self.n_pulled[a])**0.5 if self.n_pulled[a] > 0 else np.inf
     self.update_observations(pulled_arm, reward[2])
@@ -65,31 +66,43 @@ class SWTS_Learner(TS_Learner):
         super().__init__(n_arms)
         self.window_size = window_size
         self.pulled_arms = np.array([])
+
+    def pull_arm(self, margins):
+      idx = np.argmax(np.random.beta(self.beta_parameters[:, 0], self.beta_parameters[:, 1])*margins)
+      return idx
     
     def update(self, pulled_arm, reward):
         self.t += 1
-        self.update_observations(pulled_arm, reward)
+        self.update_observations(pulled_arm, reward[2])
         self.pulled_arms = np.append(self.pulled_arms, pulled_arm)
         for arm in range(self.n_arms):
             n_samples = np.sum(self.pulled_arms[-self.window_size:] == arm)
             cum_rew = np.sum(self.reward_per_arm[arm][-n_samples:]) if n_samples > 0 else 0
-            self.beta_parameters[arm,0] = cum_rew + 1
-            self.beta_parameters[arm,1] = n_samples - cum_rew + 1
+            self.beta_parameters[arm,0] = cum_rew + reward[0]
+            self.beta_parameters[arm,1] = n_samples - cum_rew + reward[1]
 
 class SWUCB_Learner(UCB1_Learner):
     def __init__(self, n_arms, window_size):
         super().__init__(n_arms)
         self.window_size = window_size
         self.pulled_arms = np.array([])
+        self.success_round = np.array([])
+        self.samples_round = np.array([])
+
+    def pull_arm(self, margins):
+      upper_conf = (self.empirical_means + self.confidence) * margins
+      return np.random.choice(np.where(upper_conf == upper_conf.max())[0])
     
     def update(self, pulled_arm, reward):
         self.t += 1
-        self.update_observations(pulled_arm, reward)
+        self.update_observations(pulled_arm, reward[2])
         self.pulled_arms = np.append(self.pulled_arms, pulled_arm)
+        self.samples_round = np.append(self.samples_round, reward[1] + reward[0])
+        self.success_round = np.append(self.success_round, reward[0])
         for arm in range(self.n_arms):
-            n_samples = np.sum(self.pulled_arms[-self.window_size:] == arm)
-            cum_rew = np.sum(self.reward_per_arm[arm][-n_samples:]) if n_samples > 0 else 0
-            self.emprical_means[arm] = cum_rew / n_samples if n_samples > 0 else 0
+            n_samples = np.sum((self.pulled_arms[-self.window_size:] == arm) * self.samples_round[-self.window_size:])
+            cum_rew = np.sum((self.pulled_arms[-self.window_size:] == arm) * self.samples_round[-self.window_size:]) if n_samples > 0 else 0
+            self.empirical_means[arm] = cum_rew / n_samples if n_samples > 0 else 0
             self.confidence[arm] = (2*np.log(self.t)/n_samples)**0.5 if n_samples > 0 else np.inf
 
 class GPTS_Learner(Learner):
@@ -198,34 +211,51 @@ class CUSUM_UCB_Learner(UCB1_Learner):
   def __init__(self, n_arms, M=100, eps=0.05, h=20, alpha=0.01):
     super().__init__(n_arms)
     self.change_detection = [CUSUM(M, eps, h) for _ in range(n_arms)]
-    self.valid_rewards_per_arm = [[] for _ in range(n_arms)]
+    self.valid_rewards_per_arm = [0 for _ in range(n_arms)]
+    self.valid_samples_per_arm = [0 for _ in range(n_arms)]
     self.detections =  [[] for _ in range(n_arms)]
+    self.valid_round_per_arm = [0 for _ in range(n_arms)]
     self.alpha = alpha
   
-  def pull_arm(self):
+  def pull_arm(self, margins):
     if np.random.binomial(1, 1-self.alpha):
-        upper_conf = self.emprical_means + self.confidence
+        upper_conf = (self.empirical_means + self.confidence) * margins
         return np.random.choice(np.where(upper_conf == upper_conf.max())[0])
     else:
         return np.random.randint(0, self.n_arms)
   
   def update(self, pulled_arm, reward):
     self.t += 1
-    if self.change_detection[pulled_arm].update(reward):
-        self.detections[pulled_arm].append(self.t)
-        self.valid_rewards_per_arm[pulled_arm] = []
-        self.change_detection[pulled_arm].reset()
+    #I need to feed cusum every single success/failure
+
+    for i in range(reward[0]):
+      if self.change_detection[pulled_arm].update(1):
+          self.detections[pulled_arm].append(self.t)
+          self.valid_rewards_per_arm[pulled_arm] = []
+          self.valid_samples_per_arm[pulled_arm] = []
+          self.valid_round_per_arm[pulled_arm] = 0
+          self.change_detection[pulled_arm].reset()
+
+    for i in range(reward[1]):
+      if self.change_detection[pulled_arm].update(0):
+          self.detections[pulled_arm].append(self.t)
+          self.valid_rewards_per_arm[pulled_arm] = []
+          self.valid_samples_per_arm[pulled_arm] = []
+          self.valid_round_per_arm[pulled_arm] = 0
+          self.change_detection[pulled_arm].reset()
+
+    self.valid_round_per_arm[pulled_arm] += 1
     self.update_observations(pulled_arm, reward)
-    self.emprical_means[pulled_arm] = np.mean(self.valid_rewards_per_arm[pulled_arm])
-    total_valid_samples = sum([len(x) for x in self.valid_rewards_per_arm])
+    self.empirical_means[pulled_arm] = self.valid_rewards_per_arm[pulled_arm] / self.valid_samples_per_arm[pulled_arm] if self.valid_samples_per_arm[pulled_arm] > 0 else 0
+    total_valid_samples = np.sum(self.valid_round_per_arm)
     for a in range(self.n_arms):
-        n_samples = len(self.valid_rewards_per_arm[a])
-        self.confidence[a] = (2*np.log(total_valid_samples)/n_samples)**0.5 if n_samples > 0 else np.inf
+        self.confidence[a] = (2*np.log(total_valid_samples)/self.valid_samples_per_arm[a])**0.5 if self.valid_samples_per_arm[a] > 0 else np.inf
 
   def update_observations(self, pulled_arm, reward):
-    self.reward_per_arm[pulled_arm].append(reward)
-    self.valid_rewards_per_arm[pulled_arm].append(reward)
-    self.collected_rewards = np.append(self.collected_rewards, reward)
+    self.valid_rewards_per_arm[pulled_arm] += reward[0]
+    self.valid_rewards_per_arm[pulled_arm] += reward[0] + reward[1]
+    self.reward_per_arm[pulled_arm].append(reward[2])
+    self.collected_rewards = np.append(self.collected_rewards, reward[2])
 
 class EXP3_Learner(Learner):
   def __init__(self, n_arms, gamma):
@@ -257,6 +287,10 @@ class EXP3_Learner(Learner):
 
   def update(self, pulled_arm, reward):
     self.t +=1
-    self.update_observations(pulled_arm, reward)
-    estimatedReward = 1.0 * reward / self.probabilityDistribution[pulled_arm]
+    self.update_observations(pulled_arm, reward[2])
+    if reward[2] < 0:
+      scaledRew = 0
+    else:
+      scaledRew = reward[2]/320
+    estimatedReward = 1.0 * scaledRew / self.probabilityDistribution[pulled_arm]
     self.weights[pulled_arm] *= math.exp(estimatedReward * self.gamma / self.n_arms)
