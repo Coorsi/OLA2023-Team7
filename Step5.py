@@ -73,7 +73,7 @@ n_experiments = 100
 
 M = 100 #number of steps to obtain reference point in change detection (for CUSUM)
 eps = 0.1 #epsilon for deviation from reference point in change detection (for CUSUM)
-h = np.log(T*6)**2 #threshold for change detection (for CUSUM)
+h = np.log(T)**2 #threshold for change detection (for CUSUM)
 
 ucb1_rewards_per_experiments = []
 swucb_rewards_per_experiments = []
@@ -101,7 +101,7 @@ optimal_bid_phase3 = bids[int(optimal_bid_index_phase3)]
 for e in tqdm(range(n_experiments)):
   env = deepcopy(env_array[0])
 
-  swucb_learner = SWUCB_Learner(n_arms = n_prices, window_size = int(T/3))
+  swucb_learner = SWUCB_Learner(n_arms = n_prices, window_size = 60)
   cusum_learner = CUSUM_UCB_Learner(n_arms = n_prices, M = M, eps = eps, h = h)
   ucb1_learner = UCB1_Learner(n_arms = n_prices)
   for t in range(0, T):

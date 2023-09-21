@@ -101,7 +101,7 @@ class SWUCB_Learner(UCB1_Learner):
         self.success_round = np.append(self.success_round, reward[0])
         for arm in range(self.n_arms):
             n_samples = np.sum((self.pulled_arms[-self.window_size:] == arm) * self.samples_round[-self.window_size:])
-            cum_rew = np.sum((self.pulled_arms[-self.window_size:] == arm) * self.samples_round[-self.window_size:]) if n_samples > 0 else 0
+            cum_rew = np.sum((self.pulled_arms[-self.window_size:] == arm) * self.samples_round[-self.window_size:]) 
             self.empirical_means[arm] = cum_rew / n_samples if n_samples > 0 else 0
             self.confidence[arm] = (2*np.log(self.t)/n_samples)**0.5 if n_samples > 0 else np.inf
 
@@ -210,6 +210,7 @@ class CUSUM:
 class CUSUM_UCB_Learner(UCB1_Learner):
   def __init__(self, n_arms, M=100, eps=0.05, h=20, alpha=0.01):
     super().__init__(n_arms)
+    self.n_arms = n_arms
     self.change_detection = [CUSUM(M, eps, h) for _ in range(n_arms)]
     self.valid_rewards_per_arm = [0 for _ in range(n_arms)]
     self.valid_samples_per_arm = [0 for _ in range(n_arms)]
@@ -226,23 +227,27 @@ class CUSUM_UCB_Learner(UCB1_Learner):
   
   def update(self, pulled_arm, reward):
     self.t += 1
+    flag = 0
     #I need to feed cusum every single success/failure
 
     for i in range(reward[0]):
       if self.change_detection[pulled_arm].update(1):
           self.detections[pulled_arm].append(self.t)
-          self.valid_rewards_per_arm[pulled_arm] = []
-          self.valid_samples_per_arm[pulled_arm] = []
+          self.valid_rewards_per_arm[pulled_arm] = 0
+          self.valid_samples_per_arm[pulled_arm] = 0
           self.valid_round_per_arm[pulled_arm] = 0
           self.change_detection[pulled_arm].reset()
+          flag = 1
+    if not(flag):
+      for i in range(reward[1]):
+        if self.change_detection[pulled_arm].update(0):
+            self.detections[pulled_arm].append(self.t)
+            self.valid_rewards_per_arm[pulled_arm] = 0
+            self.valid_samples_per_arm[pulled_arm] = 0
+            self.valid_round_per_arm[pulled_arm] = 0
+            self.change_detection[pulled_arm].reset()
 
-    for i in range(reward[1]):
-      if self.change_detection[pulled_arm].update(0):
-          self.detections[pulled_arm].append(self.t)
-          self.valid_rewards_per_arm[pulled_arm] = []
-          self.valid_samples_per_arm[pulled_arm] = []
-          self.valid_round_per_arm[pulled_arm] = 0
-          self.change_detection[pulled_arm].reset()
+    flag = 0
 
     self.valid_round_per_arm[pulled_arm] += 1
     self.update_observations(pulled_arm, reward)
@@ -253,7 +258,7 @@ class CUSUM_UCB_Learner(UCB1_Learner):
 
   def update_observations(self, pulled_arm, reward):
     self.valid_rewards_per_arm[pulled_arm] += reward[0]
-    self.valid_rewards_per_arm[pulled_arm] += reward[0] + reward[1]
+    self.valid_samples_per_arm[pulled_arm] += reward[0] + reward[1]
     self.reward_per_arm[pulled_arm].append(reward[2])
     self.collected_rewards = np.append(self.collected_rewards, reward[2])
 
