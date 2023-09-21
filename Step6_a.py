@@ -74,11 +74,11 @@ for c in classes:
 
 #EXPERIMENT BEGIN
 
-n_experiments = 100
+n_experiments = 1000
 
 M = 100 #number of steps to obtain reference point in change detection (for CUSUM)
 eps = 0.1 #epsilon for deviation from reference point in change detection (for CUSUM)
-h = np.log(T)*2 #threshold for change detection (for CUSUM)
+h = np.log(T)**2 #threshold for change detection (for CUSUM)
 
 swucb_rewards_per_experiments = []
 cusum_rewards_per_experiments = []
@@ -213,21 +213,21 @@ axs[0][0].set_title("Cumulative SWUCB vs CUSUM vs EXP3")
 axs[0][1].set_xlabel("t")
 axs[0][1].set_ylabel("Regret")
 axs[0][1].plot(np.mean(swucb_rewards_per_experiments, axis = 0), 'r')
-axs[0][1].plot(np.mean(cusum_rewards_per_experiments, axis = 0), 'm')
-axs[0][1].plot(np.mean(exp3low_rewards_per_experiments, axis = 0), 'b')
+#axs[0][1].plot(np.mean(cusum_rewards_per_experiments, axis = 0), 'm')
+#axs[0][1].plot(np.mean(exp3low_rewards_per_experiments, axis = 0), 'b')
 axs[0][1].legend(["Reward SWUCB", "Reward CUSUM", "Reward EXP3"])
 axs[0][1].set_title("Instantaneous Reward SWUCB vs CUSUM vs EXP3")
 
 #We plot only the standard deviation of the reward beacuse the standard deviation of the regret is the same
 axs[1][0].plot(np.std(swucb_rewards_per_experiments, axis = 0), 'b')   
-axs[1][0].plot(np.std(cusum_rewards_per_experiments, axis = 0), 'c')
-axs[1][0].plot(np.std(exp3low_rewards_per_experiments, axis = 0), 'r')
+#axs[1][0].plot(np.std(cusum_rewards_per_experiments, axis = 0), 'c')
+#axs[1][0].plot(np.std(exp3low_rewards_per_experiments, axis = 0), 'r')
 axs[1][0].legend(["Std SWUCB","Std CUSUM", "Std EXP3"])
 axs[1][0].set_title("Instantaneous Std SWUCB VS CUSUM vs EXP3")
 
 axs[1][1].plot(np.mean(opt - swucb_rewards_per_experiments, axis = 0), 'g')
-axs[1][1].plot(np.mean(opt - cusum_rewards_per_experiments, axis = 0), 'y')
-axs[1][1].plot(np.mean(opt - exp3low_rewards_per_experiments, axis = 0), 'b')
+#axs[1][1].plot(np.mean(opt - cusum_rewards_per_experiments, axis = 0), 'y')
+#axs[1][1].plot(np.mean(opt - exp3low_rewards_per_experiments, axis = 0), 'b')
 axs[1][1].legend(["Regret SWUCB","Regret CUSUM", "Regret EXP3"])
 axs[1][1].set_title("Instantaneous Regret SWUCB vs CUSUM vs EXP3")
 
