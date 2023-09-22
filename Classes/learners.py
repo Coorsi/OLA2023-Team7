@@ -229,9 +229,8 @@ class CUSUM_UCB_Learner(UCB1_Learner):
 
     def update(self, pulled_arm, reward):
         self.t += 1
-        flag = 0
         # I need to feed cusum every single success/failure
-
+        #successes
         for i in range(reward[0]):
             if self.change_detection[pulled_arm].update(1):
                 self.detections[pulled_arm].append(self.t)
@@ -240,16 +239,14 @@ class CUSUM_UCB_Learner(UCB1_Learner):
                 self.valid_round_per_arm[pulled_arm] = 0
                 self.change_detection[pulled_arm].reset()
                 flag = 1
-        if not flag:
-            for i in range(reward[1]):
-                if self.change_detection[pulled_arm].update(0):
-                    self.detections[pulled_arm].append(self.t)
-                    self.valid_rewards_per_arm[pulled_arm] = 0
-                    self.valid_samples_per_arm[pulled_arm] = 0
-                    self.valid_round_per_arm[pulled_arm] = 0
-                    self.change_detection[pulled_arm].reset()
-
-        flag = 0
+        #failures
+        for i in range(reward[1]):
+            if self.change_detection[pulled_arm].update(0):
+                self.detections[pulled_arm].append(self.t)
+                self.valid_rewards_per_arm[pulled_arm] = 0
+                self.valid_samples_per_arm[pulled_arm] = 0
+                self.valid_round_per_arm[pulled_arm] = 0
+                self.change_detection[pulled_arm].reset()
 
         self.valid_round_per_arm[pulled_arm] += 1
         self.update_observations(pulled_arm, reward)
