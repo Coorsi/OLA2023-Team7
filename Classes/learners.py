@@ -240,7 +240,7 @@ class CUSUM_UCB_Learner(UCB1_Learner):
                 self.valid_round_per_arm[pulled_arm] = 0
                 self.change_detection[pulled_arm].reset()
                 flag = 1
-        if not (flag):
+        if not flag:
             for i in range(reward[1]):
                 if self.change_detection[pulled_arm].update(0):
                     self.detections[pulled_arm].append(self.t)

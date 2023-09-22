@@ -64,7 +64,7 @@ class Non_Stationary_Environment(Environment):
                 else:
                     self.current_phase += 1
         else:
-            if self.time % 18 == 0:
+            if self.time % 18 == 0 and self.time != 0 and update_time:
                 if self.current_phase == 4:
                     self.current_phase = 0
                 else:
