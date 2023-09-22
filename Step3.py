@@ -41,7 +41,7 @@ print(opt_reward)
 # EXPERIMENT BEGIN FOR ESTIMATING THE OPTIMAL PRICE
 T = 365
 
-n_experiments = 25
+n_experiments = 20
 n_noise_std = 2
 cc_noise_std = 3
 
