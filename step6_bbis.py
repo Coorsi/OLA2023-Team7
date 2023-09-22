@@ -62,7 +62,7 @@ for c in classes:
 
 # EXPERIMENT BEGIN
 
-n_experiments = 50
+n_experiments = 100
 
 M = 100  # number of steps to obtain reference point in change detection (for CUSUM)
 eps = 0.1  # epsilon for deviation from reference point in change detection (for CUSUM)

@@ -78,10 +78,12 @@ opt_phase3 = optimal3[2][0]
 
 for e in tqdm(range(n_experiments)):
     env = deepcopy(env_array[0])
+    env.current_phase = 0
+    env.time = 0
     swucb_learner = SWUCB_Learner(n_arms=n_prices, window_size=(int(math.sqrt(T)) * 6))
     cusum_learner = CUSUM_UCB_Learner(n_arms=n_prices, M=M, eps=eps, h=h)
     exp3_learner_low = EXP3_Learner(n_arms=n_prices, gamma=0.01)
-    exp3_learner_mid = EXP3_Learner(n_arms=n_prices, gamma=0.45)
+    exp3_learner_mid = EXP3_Learner(n_arms=n_prices, gamma=0.35)
     exp3_learner_high = EXP3_Learner(n_arms=n_prices, gamma=0.85)
     for t in range(0, T):
         n = int(env.draw_n(optimal_bid_phase1, 1))
