@@ -18,26 +18,26 @@ prices = price * np.array([1, 2, 3, 4, 5])
 margins = np.array([prices[i] - cost_of_product for i in range(n_prices)])
 classes = np.array([0, 1, 2])
 # C1   C2   C3
-conversion_rate_phase1 = np.array([[0.69, 0.29, 0.38],  # 1*price
-                                   [0.57, 0.23, 0.31],  # 2*price
-                                   [0.51, 0.18, 0.24],  # 3*price
-                                   [0.11, 0.12, 0.17],  # 4*price
-                                   [0.05, 0.07, 0.09]  # 5*price
+conversion_rate_phase1 = np.array([[0.38, 0.29, 0.38],  # 1*price
+                                   [0.22, 0.23, 0.31],  # 2*price
+                                   [0.15, 0.18, 0.24],  # 3*price
+                                   [0.12, 0.12, 0.17],  # 4*price
+                                   [0.06, 0.07, 0.09]  # 5*price
                                    ])
 # C1   C2   C3
-conversion_rate_phase2 = np.array([[0.46, 0.18, 0.25],  # 1*price
-                                   [0.21, 0.15, 0.20],  # 2*price
-                                   [0.15, 0.11, 0.15],  # 3*price
-                                   [0.12, 0.06, 0.10],  # 4*price
-                                   [0.04, 0.03, 0.05]  # 5*price
+conversion_rate_phase2 = np.array([[0.56, 0.18, 0.25],  # 1*price
+                                   [0.41, 0.15, 0.20],  # 2*price
+                                   [0.35, 0.11, 0.15],  # 3*price
+                                   [0.31, 0.06, 0.10],  # 4*price
+                                   [0.27, 0.03, 0.05]  # 5*price
                                    ])
 
 # C1   C2   C3
-conversion_rate_phase3 = np.array([[0.77, 0.48, 0.70],  # 1*price
-                                   [0.51, 0.37, 0.56],  # 2*price
-                                   [0.44, 0.28, 0.42],  # 3*price
-                                   [0.37, 0.14, 0.28],  # 4*price
-                                   [0.34, 0.05, 0.14]  # 5*price
+conversion_rate_phase3 = np.array([[0.33, 0.48, 0.70],  # 1*price
+                                   [0.21, 0.37, 0.56],  # 2*price
+                                   [0.17, 0.28, 0.42],  # 3*price
+                                   [0.14, 0.14, 0.28],  # 4*price
+                                   [0.09, 0.05, 0.14]  # 5*price
                                    ])
 
 env_array = []

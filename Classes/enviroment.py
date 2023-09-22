@@ -9,24 +9,22 @@ class Environment():
         self.id_class = id_class
 
     def n(self, x):
-        k = 25
         if self.id_class == 0:
-            return k * (1 - np.exp(-4 * x + 2 * x ** 3))
+            return 65 * (1 - np.exp(-3.6 * x + 2 * x ** 3)) + 2
         elif self.id_class == 1:
-            return k * (1 - np.exp(-2 * x + 2 * x ** 3))
+            return 65 * (1 - np.exp(-3.2 * x + 2 * x ** 3)) + 2
         elif self.id_class == 2:
-            return k * (1 - np.exp(-3 * x + 2 * x ** 3))
+            return 48 * (1 - np.exp(-3 * x + x ** 3)) + 3
         else:
             return -1
 
     def cc(self, x):
-        k = 2
         if self.id_class == 0:
-            return k * (1 - np.exp(-4 * x + 2 * x ** 2))
+            return 100 * (1 - np.exp(-4.5 * x + x ** 3)) + 11
         elif self.id_class == 1:
-            return k * (1 - np.exp(-2 * x + 2 * x ** 2))
+            return 95 * (1 - np.exp(-4 * x + x ** 3)) + 10
         elif self.id_class == 2:
-            return k * (1 - np.exp(-3 * x + 2 * x ** 2))
+            return 90 * (1 - np.exp(-3 * x + x ** 3)) + 10
         else:
             return -1
 
