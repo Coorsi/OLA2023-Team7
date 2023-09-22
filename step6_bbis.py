@@ -62,15 +62,17 @@ for c in classes:
 
 # EXPERIMENT BEGIN
 
-n_experiments = 100
+n_experiments = 1000
 
-M = 100  # number of steps to obtain reference point in change detection (for CUSUM)
-eps = 0.1  # epsilon for deviation from reference point in change detection (for CUSUM)
+M = 50  # number of steps to obtain reference point in change detection (for CUSUM)
+eps = np.log(T) / T  # epsilon for deviation from reference point in change detection (for CUSUM)
 h = np.log(T) * 2  # threshold for change detection (for CUSUM)
 
 swucb_rewards_per_experiments = []
 cusum_rewards_per_experiments = []
-exp3_rewards_per_experiments = []
+exp3low_rewards_per_experiments = []
+exp3mid_rewards_per_experiments = []
+exp3high_rewards_per_experiments = []
 
 # phase 1
 optimal1 = clairvoyant(classes, bids, prices, margins, conversion_rate_phase1, env_array)
@@ -93,13 +95,11 @@ opt_phase3 = optimal3[2][0]
 optimal4 = clairvoyant(classes, bids, prices, margins, conversion_rate_phase4, env_array)
 opt_index_phase4 = int(optimal4[0][0])
 opt_phase4 = optimal4[2][0]
-print(opt_phase4)
 
 # phase 5
 optimal5 = clairvoyant(classes, bids, prices, margins, conversion_rate_phase5, env_array)
 opt_index_phase5 = int(optimal5[0][0])
 opt_phase5 = optimal5[2][0]
-print(opt_phase5)
 
 for e in tqdm(range(n_experiments)):
     env = deepcopy(env_array[0])
@@ -107,7 +107,9 @@ for e in tqdm(range(n_experiments)):
     env.current_phase = 0
     swucb_learner = SWUCB_Learner(n_arms=n_prices, window_size=18)
     cusum_learner = CUSUM_UCB_Learner(n_arms=n_prices, M=M, eps=eps, h=h)
-    exp3_learner = EXP3_Learner(n_arms=n_prices, gamma=0.35)
+    exp3_learner_mid = EXP3_Learner(n_arms=n_prices, gamma=0.35)
+    exp3_learner_low = EXP3_Learner(n_arms=n_prices, gamma=0.01)
+    exp3_learner_high = EXP3_Learner(n_arms=n_prices, gamma=0.85)
     for t in (range(T)):
         n = int(env.draw_n(optimal_bid_phase1, 1))
         cc = env.draw_cc(optimal_bid_phase1, 1)
@@ -125,16 +127,32 @@ for e in tqdm(range(n_experiments)):
         reward[2] = reward[0] * margins[pulled_arm] - cc
         cusum_learner.update(pulled_arm, reward)
 
-        pulled_arm = exp3_learner.pull_arm()  # normalizzare reward
+        pulled_arm = exp3_learner_low.pull_arm()  # normalizzare reward
         reward = [0, 0, 0]  # success, failures, reward
         reward[0] += env.round2(pulled_arm, n, True)
         reward[1] = n - reward[0]
         reward[2] = reward[0] * margins[pulled_arm] - cc
-        exp3_learner.update(pulled_arm, reward)
+        exp3_learner_low.update(pulled_arm, reward)
+
+        pulled_arm = exp3_learner_mid.pull_arm()  # normalizzare reward
+        reward = [0, 0, 0]  # success, failures, reward
+        reward[0] += env.round2(pulled_arm, n, True)
+        reward[1] = n - reward[0]
+        reward[2] = reward[0] * margins[pulled_arm] - cc
+        exp3_learner_mid.update(pulled_arm, reward)
+
+        pulled_arm = exp3_learner_high.pull_arm()  # normalizzare reward
+        reward = [0, 0, 0]  # success, failures, reward
+        reward[0] += env.round2(pulled_arm, n, True)
+        reward[1] = n - reward[0]
+        reward[2] = reward[0] * margins[pulled_arm] - cc
+        exp3_learner_high.update(pulled_arm, reward)
 
     swucb_rewards_per_experiments.append(swucb_learner.collected_rewards)
     cusum_rewards_per_experiments.append(cusum_learner.collected_rewards)
-    exp3_rewards_per_experiments.append(exp3_learner.collected_rewards)
+    exp3low_rewards_per_experiments.append(exp3_learner_low.collected_rewards)
+    exp3mid_rewards_per_experiments.append(exp3_learner_mid.collected_rewards)
+    exp3high_rewards_per_experiments.append(exp3_learner_high.collected_rewards)
 
 opt = np.ones([T])
 size_phases = int(T / 20)
@@ -170,10 +188,20 @@ cusum_regret = np.array(opt - cusum_reward)
 cusum_cum_reward = np.cumsum(cusum_reward, axis=1)
 cusum_cum_regret = np.cumsum(cusum_regret, axis=1)
 
-exp3mid_reward = np.array(exp3_rewards_per_experiments)
+exp3mid_reward = np.array(exp3mid_rewards_per_experiments)
 exp3mid_regret = np.array(opt - exp3mid_reward)
 exp3mid_cum_reward = np.cumsum(exp3mid_reward, axis=1)
 exp3mid_cum_regret = np.cumsum(exp3mid_regret, axis=1)
+
+exp3low_reward = np.array(exp3low_rewards_per_experiments)
+exp3low_regret = np.array(opt - exp3low_reward)
+exp3low_cum_reward = np.cumsum(exp3low_reward, axis=1)
+exp3low_cum_regret = np.cumsum(exp3low_regret, axis=1)
+
+exp3high_reward = np.array(exp3high_rewards_per_experiments)
+exp3high_regret = np.array(opt - exp3high_reward)
+exp3high_cum_reward = np.cumsum(exp3high_reward, axis=1)
+exp3high_cum_regret = np.cumsum(exp3high_regret, axis=1)
 
 fig, axs = plt.subplots(2, 2, figsize=(14, 7))
 
@@ -240,5 +268,72 @@ axs[1][1].fill_between(range(T), np.mean(exp3mid_regret, axis=0) - np.std(
     exp3mid_regret, axis=0), np.mean(exp3mid_regret, axis=0) + np.std(exp3mid_regret, axis=0), color='b', alpha=0.2)
 axs[1][1].legend(["Regret SWUCB", "Regret CUSUM", "Regret EXP3"])
 axs[1][1].set_title("Instantaneous Regret SWUCB vs CUSUM vs EXP3")
+
+
+#sens analysis
+fig, axs = plt.subplots(2, 2, figsize=(14, 7))
+axs[0][0].set_xlabel("t")
+axs[0][0].set_ylabel("Cumulative reward")
+axs[0][0].plot(np.mean(exp3low_cum_reward, axis=0), 'r')
+axs[0][0].plot(np.mean(exp3high_cum_reward, axis=0), 'm')
+axs[0][0].plot(np.mean(exp3mid_cum_reward, axis=0), 'c')
+axs[0][0].fill_between(range(T), np.mean(exp3low_cum_reward, axis=0) - np.std(
+    exp3low_cum_reward, axis=0), np.mean(exp3low_cum_reward, axis=0) + np.std(
+    exp3low_cum_reward, axis=0), color='r', alpha=0.2)
+axs[0][0].fill_between(range(T), np.mean(exp3high_cum_reward, axis=0) - np.std(
+    exp3high_cum_reward, axis=0), np.mean(exp3high_cum_reward, axis=0) + np.std(
+    exp3high_cum_reward, axis=0), color='m', alpha=0.2)
+axs[0][0].fill_between(range(T), np.mean(exp3mid_cum_reward, axis=0) - np.std(
+    exp3mid_cum_reward, axis=0), np.mean(exp3mid_cum_reward, axis=0) + np.std(
+    exp3mid_cum_reward, axis=0), color='c', alpha=0.2)
+
+axs[0][0].legend(["gamma = 0.01", "gamma = 0.85", "gamma = 0.35"])
+axs[0][0].set_title("Cumulative Reward EXP3s")
+
+axs[0][1].set_xlabel("t")
+axs[0][1].set_ylabel("Instantaneous Reward")
+axs[0][1].plot(np.mean(exp3low_reward, axis=0), 'r')
+axs[0][1].plot(np.mean(exp3high_reward, axis=0), 'm')
+axs[0][1].plot(np.mean(exp3mid_reward, axis=0), 'c')
+axs[0][1].fill_between(range(T), np.mean(exp3low_reward, axis=0) - np.std(exp3low_reward, axis=0),
+                       np.mean(exp3low_reward, axis=0) + np.std(exp3low_reward, axis=0), color='r', alpha=0.2)
+axs[0][1].fill_between(range(T), np.mean(exp3high_reward, axis=0) - np.std(exp3high_reward, axis=0),
+                       np.mean(exp3high_reward, axis=0) + np.std(exp3high_reward, axis=0), color='m', alpha=0.2)
+axs[0][1].fill_between(range(T), np.mean(exp3mid_reward, axis=0) - np.std(exp3mid_reward, axis=0),
+                       np.mean(exp3mid_reward, axis=0) + np.std(exp3mid_reward, axis=0), color='c', alpha=0.2)
+axs[0][1].legend(["gamma = 0.01", "gamma = 0.85", "gamma = 0.35"])
+axs[0][1].set_title("Instantaneous Rewards EXP3s")
+
+axs[1][0].set_xlabel("t")
+axs[1][0].set_ylabel("Cumulative regret")
+axs[1][0].plot(np.mean(exp3low_cum_regret, axis=0), 'g')
+axs[1][0].plot(np.mean(exp3high_cum_regret, axis=0), 'y')
+axs[1][0].plot(np.mean(exp3mid_cum_regret, axis=0), 'b')
+axs[1][0].fill_between(range(T), np.mean(exp3low_cum_regret, axis=0) - np.std(
+    exp3low_cum_regret, axis=0), np.mean(exp3low_cum_regret, axis=0) + np.std(exp3low_cum_regret, axis=0),
+                       color='g', alpha=0.2)
+axs[1][0].fill_between(range(T), np.mean(exp3high_cum_regret, axis=0) - np.std(
+    exp3high_cum_regret, axis=0), np.mean(exp3high_cum_regret, axis=0) + np.std(exp3high_cum_regret, axis=0),
+                       color='y', alpha=0.2)
+axs[1][0].fill_between(range(T), np.mean(exp3mid_cum_regret, axis=0) - np.std(
+    exp3mid_cum_regret, axis=0), np.mean(exp3mid_cum_regret, axis=0) + np.std(exp3mid_cum_regret, axis=0),
+                       color='b', alpha=0.2)
+
+axs[1][0].legend(["gamma = 0.01", "gamma = 0.85", "gamma = 0.35"])
+axs[1][0].set_title("Cumulative Regret EXP3s")
+
+axs[1][1].set_xlabel("t")
+axs[1][1].set_ylabel("Instantaneous regret")
+axs[1][1].plot(np.mean(exp3low_regret, axis=0), 'g')
+axs[1][1].plot(np.mean(exp3high_regret, axis=0), 'y')
+axs[1][1].plot(np.mean(exp3mid_regret, axis=0), 'b')
+axs[1][1].fill_between(range(T), np.mean(exp3low_regret, axis=0) - np.std(
+    exp3low_regret, axis=0), np.mean(exp3low_regret, axis=0) + np.std(exp3low_regret, axis=0), color='g', alpha=0.2)
+axs[1][1].fill_between(range(T), np.mean(exp3high_regret, axis=0) - np.std(
+    exp3high_regret, axis=0), np.mean(exp3high_regret, axis=0) + np.std(exp3high_regret, axis=0), color='y', alpha=0.2)
+axs[1][1].fill_between(range(T), np.mean(exp3mid_regret, axis=0) - np.std(
+    exp3mid_regret, axis=0), np.mean(exp3mid_regret, axis=0) + np.std(exp3mid_regret, axis=0), color='b', alpha=0.2)
+axs[1][1].legend(["gamma = 0.01", "gamma = 0.85", "gamma = 0.35"])
+axs[1][1].set_title("Instantaneous Regret EXP3s")
 
 plt.show()

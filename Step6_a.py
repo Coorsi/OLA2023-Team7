@@ -50,11 +50,11 @@ for c in classes:
 
 # EXPERIMENT BEGIN
 
-n_experiments = 100
+n_experiments = 1000
 
-M = 100  # number of steps to obtain reference point in change detection (for CUSUM)
-eps = 0.1  # epsilon for deviation from reference point in change detection (for CUSUM)
-h = np.log(T) ** 2  # threshold for change detection (for CUSUM)
+M = 50  # number of steps to obtain reference point in change detection (for CUSUM)
+eps = np.log(T) / T # epsilon for deviation from reference point in change detection (for CUSUM)
+h = np.log(T) * 2  # threshold for change detection (for CUSUM)
 
 swucb_rewards_per_experiments = []
 cusum_rewards_per_experiments = []
@@ -80,7 +80,7 @@ for e in tqdm(range(n_experiments)):
     env = deepcopy(env_array[0])
     env.current_phase = 0
     env.time = 0
-    swucb_learner = SWUCB_Learner(n_arms=n_prices, window_size=(int(math.sqrt(T)) * 6))
+    swucb_learner = SWUCB_Learner(n_arms=n_prices, window_size=(int(math.sqrt(T)) * 7))
     cusum_learner = CUSUM_UCB_Learner(n_arms=n_prices, M=M, eps=eps, h=h)
     exp3_learner_low = EXP3_Learner(n_arms=n_prices, gamma=0.01)
     exp3_learner_mid = EXP3_Learner(n_arms=n_prices, gamma=0.35)
