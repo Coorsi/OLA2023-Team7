@@ -56,7 +56,7 @@ class Non_Stationary_Environment(Environment):
 
     def round2(self, pulled_arm, n, update_time):    # pulled arm, number of clicks, bool (if true update time)
         if self.high_frequency_change == 0:
-            if self.time % self.phases_size == 0 and self.time != 0 and update_time:
+            if self.time % self.phases_size == 0 and self.time != 0 and update_time and self.time < 363:
                 if self.current_phase == 2:
                     self.current_phase = 0
                 else:
