@@ -98,15 +98,15 @@ for e in tqdm(range(n_experiments)):
     gpts_collected_rewards = np.array([])
     gpucb_collected_rewards = np.array([])
     for t in range(0, T):
-        # if t % 14 == 0 and t != 0:  # context generation
-        #     contexts_gpts = []
-        #     contexts_gpucb = []
-        #     print(context_generator_gpts.select_context())
-        #     for features in context_generator_gpts.select_context():
-        #         contexts_gpts.append(contexts_dict[features])
-        #     print(context_generator_gpucb.select_context())
-        #     for features in context_generator_gpucb.select_context():
-        #         contexts_gpucb.append(contexts_dict[features])
+        if t % 14 == 0 and t != 0:  # context generation
+            contexts_gpts = []
+            contexts_gpucb = []
+            print(context_generator_gpts.select_context())
+            for features in context_generator_gpts.select_context():
+                contexts_gpts.append(contexts_dict[features])
+            print(context_generator_gpucb.select_context())
+            for features in context_generator_gpucb.select_context():
+                contexts_gpucb.append(contexts_dict[features])
 
         gpts_reward_iteration = 0
         gpucb_reward_iteration = 0
@@ -279,55 +279,69 @@ for e in tqdm(range(n_experiments)):
     gpts_reward.append(gpts_collected_rewards)
     gpucb_reward.append(gpucb_collected_rewards)
 
-gpts_rewards = np.array(gpts_reward)
-gpucb_rewards = np.array(gpucb_reward)
+gpts_reward = np.array(gpts_reward)
+gpts_regret = np.array(opt_reward - gpts_reward)
+gpts_cum_reward = np.cumsum(gpts_reward, axis=1)
+gpts_cum_regret = np.cumsum(gpts_regret, axis=1)
 
-# total regret is the sum of all regrets
-tot_regret_gpts = opt_reward - gpts_rewards
-tot_regret_gpucb = opt_reward - gpucb_rewards
+gpucb_reward = np.array(gpucb_reward)
+gpucb_regret = np.array(opt_reward - gpucb_reward)
+gpucb_cum_reward = np.cumsum(gpucb_reward, axis=1)
+gpucb_cum_regret = np.cumsum(gpucb_regret, axis=1)
 
-# plot
-fig, axs = plt.subplots(2, 2, figsize=(24, 12))
+fig, axs = plt.subplots(2, 2, figsize=(14, 7))
 
 axs[0][0].set_xlabel("t")
-axs[0][0].set_ylabel("Regret")
-axs[0][0].plot(np.cumsum(np.mean(gpts_rewards, axis=0)), 'r')
-axs[0][0].plot(np.cumsum(np.mean(gpucb_rewards, axis=0)), 'm')
+axs[0][0].set_ylabel("Cumulative reward")
+axs[0][0].plot(np.mean(gpts_cum_reward, axis=0), 'r')
+axs[0][0].plot(np.mean(gpucb_cum_reward, axis=0), 'm')
+axs[0][0].fill_between(range(T), np.mean(gpts_cum_reward, axis=0) - np.std(
+    gpts_cum_reward, axis=0), np.mean(gpts_cum_reward, axis=0) + np.std(
+    gpts_cum_reward, axis=0), color='r', alpha=0.2)
+axs[0][0].fill_between(range(T), np.mean(gpucb_cum_reward, axis=0) - np.std(
+    gpucb_cum_reward, axis=0), np.mean(gpucb_cum_reward, axis=0) + np.std(
+    gpucb_cum_reward, axis=0), color='m', alpha=0.2)
 
-# We plot only the standard deviation of the reward beacuse the standard deviation of the regret is the same
-axs[0][0].plot(np.cumsum(np.std(gpts_rewards, axis=0)), 'b')
-axs[0][0].plot(np.cumsum(np.std(gpucb_rewards, axis=0)), 'c')
-
-axs[0][0].plot(np.cumsum(np.mean(tot_regret_gpts, axis=0)), 'g')
-axs[0][0].plot(np.cumsum(np.mean(tot_regret_gpucb, axis=0)), 'y')
-
-axs[0][0].legend(["Reward GPTS", "Reward GPUCB", "Std GPTS", "Std GPUCB", "Regret GPTS", "Regret GPUCB"])
-axs[0][0].set_title("Cumulative GPTS vs GPUCB")
+axs[0][0].legend(["Cumulative Reward GPTS", "Cumulative Reward GPUCB"])
+axs[0][0].set_title("Cumulative Reward GPTS vs GPUCB")
 
 axs[0][1].set_xlabel("t")
-axs[0][1].set_ylabel("Reward")
-axs[0][1].plot(np.mean(gpts_rewards, axis=0), 'r')
-axs[0][1].plot(np.mean(gpucb_rewards, axis=0), 'm')
+axs[0][1].set_ylabel("Instantaneous Reward")
+axs[0][1].plot(np.mean(gpts_reward, axis=0), 'r')
+axs[0][1].plot(np.mean(gpucb_reward, axis=0), 'm')
+axs[0][1].fill_between(range(T), np.mean(gpts_reward, axis=0) - np.std(gpts_reward, axis=0),
+                       np.mean(gpts_reward, axis=0) + np.std(gpts_reward, axis=0), color='r', alpha=0.2)
+axs[0][1].fill_between(range(T), np.mean(gpucb_reward, axis=0) - np.std(gpucb_reward, axis=0),
+                       np.mean(gpucb_reward, axis=0) + np.std(gpucb_reward, axis=0), color='m', alpha=0.2)
 axs[0][1].legend(["Reward GPTS", "Reward GPUCB"])
 axs[0][1].set_title("Instantaneous Reward GPTS vs GPUCB")
 
 axs[1][0].set_xlabel("t")
-axs[1][0].set_ylabel("Regret")
-axs[1][0].plot(np.mean(tot_regret_gpts, axis=0), 'g')
-axs[1][0].plot(np.mean(tot_regret_gpucb, axis=0), 'y')
-axs[1][0].legend(["Regret GPTS", "Regret GPUCB"])
-axs[1][0].set_title("Instantaneous Std GPTS vs GPUCB")
+axs[1][0].set_ylabel("Cumulative regret")
+axs[1][0].plot(np.mean(gpts_cum_regret, axis=0), 'g')
+axs[1][0].plot(np.mean(gpucb_cum_regret, axis=0), 'y')
+axs[1][0].fill_between(range(T), np.mean(gpts_cum_regret, axis=0) - np.std(
+    gpts_cum_regret, axis=0), np.mean(gpts_cum_regret, axis=0) + np.std(gpts_cum_regret, axis=0),
+                       color='g', alpha=0.2)
+axs[1][0].fill_between(range(T), np.mean(gpucb_cum_regret, axis=0) - np.std(
+    gpucb_cum_regret, axis=0), np.mean(gpucb_cum_regret, axis=0) + np.std(gpucb_cum_regret, axis=0),
+                       color='g', alpha=0.2)
 
-# We plot only the standard deviation of the reward beacuse the standard deviation of the regret is the same
+axs[1][0].legend(["Cumulative Regret GPTS", "Cumulative Regret GPUCB"])
+axs[1][0].set_title("Cumulative Regret GPTS vs GPUCB")
 
 axs[1][1].set_xlabel("t")
-axs[1][1].set_ylabel("Reward")
-axs[1][1].plot(np.std(gpts_rewards, axis=0), 'b')
-axs[1][1].plot(np.std(gpucb_rewards, axis=0), 'c')
-axs[1][1].legend(["Std GPTS", "Std GPUCB"])
-axs[1][1].set_title("Instantaneous Reward GPTS vs GPUCB")
+axs[1][1].set_ylabel("Instantaneous regret")
+axs[1][1].plot(np.mean(gpts_regret, axis=0), 'g')
+axs[1][1].plot(np.mean(gpucb_regret, axis=0), 'y')
+axs[1][1].fill_between(range(T), np.mean(gpts_regret, axis=0) - np.std(
+    gpts_regret, axis=0), np.mean(gpts_regret, axis=0) + np.std(gpts_regret, axis=0), color='g', alpha=0.2)
+axs[1][1].fill_between(range(T), np.mean(gpucb_regret, axis=0) - np.std(
+    gpucb_regret, axis=0), np.mean(gpucb_regret, axis=0) + np.std(gpucb_regret, axis=0), color='y', alpha=0.2)
+axs[1][1].legend(["Regret TS", "Regret UCB1"])
+axs[1][1].set_title("Instantaneous Regret TS vs UCB1")
 
 plt.show()
-# print(gpts_rewards)
-# print(gpucb_rewards)
-# print(opt_reward)
+print(gpts_reward)
+print(gpucb_reward)
+print(opt_reward)
