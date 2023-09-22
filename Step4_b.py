@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 n_prices = 5
 n_bids = 100
-cost_of_product = 150
+cost_of_product = 180
 price = 100
 
 bids = np.linspace(0.0, 1.0, n_bids)
@@ -18,11 +18,11 @@ prices = price * np.array([2, 2.5, 3, 3.5, 4])
 margins = np.array([prices[i] - cost_of_product for i in range(n_prices)])
 classes = np.array([0, 1, 2, 3])
 #                            C1    C2    C3    C4
-conversion_rate = np.array([[0.05, 0.18, 0.28, 0.28],  # 1*price
-                            [0.35, 0.20, 0.16, 0.16],  # 2*price
-                            [0.15, 0.38, 0.12, 0.12],  # 3*price
-                            [0.10, 0.22, 0.10, 0.10],  # 4*price
-                            [0.13, 0.15, 0.06, 0.06]  # 5*price
+conversion_rate = np.array([[0.38, 0.41, 0.57, 0.57],  # 1*price
+                            [0.22, 0.24, 0.46, 0.46],  # 2*price
+                            [0.15, 0.19, 0.31, 0.31],  # 3*price
+                            [0.12, 0.09, 0.23, 0.23],  # 4*price
+                            [0.06, 0.05, 0.19, 0.19]  # 5*price
                             ])
 
 env_dict = {
@@ -48,11 +48,11 @@ opt_reward = sum(opt_rewards)
 print(opt_reward)
 
 # EXPERIMENT BEGIN FOR ESTIMATING THE OPTIMAL PRICE
-T = 365
+T = 200
 
-n_experiments = 25
-n_noise_std = 1.5
-cc_noise_std = 1
+n_experiments = 10
+n_noise_std = 2
+cc_noise_std = 3
 
 n_context, cc_context = 0, 0
 probabilities = [0.5, 0.3]
@@ -98,15 +98,15 @@ for e in tqdm(range(n_experiments)):
     gpts_collected_rewards = np.array([])
     gpucb_collected_rewards = np.array([])
     for t in range(0, T):
-        if t % 14 == 0 and t != 0:  # context generation
-            contexts_gpts = []
-            contexts_gpucb = []
-            print(context_generator_gpts.select_context())
-            for features in context_generator_gpts.select_context():
-                contexts_gpts.append(contexts_dict[features])
-            print(context_generator_gpucb.select_context())
-            for features in context_generator_gpucb.select_context():
-                contexts_gpucb.append(contexts_dict[features])
+        # if t % 14 == 0 and t != 0:  # context generation
+        #     contexts_gpts = []
+        #     contexts_gpucb = []
+        #     print(context_generator_gpts.select_context())
+        #     for features in context_generator_gpts.select_context():
+        #         contexts_gpts.append(contexts_dict[features])
+        #     print(context_generator_gpucb.select_context())
+        #     for features in context_generator_gpucb.select_context():
+        #         contexts_gpucb.append(contexts_dict[features])
 
         gpts_reward_iteration = 0
         gpucb_reward_iteration = 0
@@ -127,68 +127,154 @@ for e in tqdm(range(n_experiments)):
             pulled_arms_per_context[contexts_gpts[i].get_features()] = [pulled_arm_price, pulled_arm_bid]
 
         # play the arm
-        for features_string in pulled_arms_per_context.keys():
-            features = []
-            for feature in features_string:
-                if feature == "N":
-                    features.append(None)
-                elif feature == "0":
-                    features.append(0)
-                elif feature == "1":
-                    features.append(1)
-
-            n = int(max(0, env_dict[features_string].draw_n(bids[pulled_arms_per_context[features_string][1]],
-                                                            n_noise_std)))
-            cc = max(0, env_dict[features_string].draw_cc(bids[pulled_arms_per_context[features_string][1]],
-                                                          cc_noise_std))
-            reward = [0, 0, 0]  # conversions, failures, reward
-            users_data = {  # conversions and clicks for each user type
-                "00": [0, 0],
-                "01": [0, 0],
-                "10": [0, 0],
-                "11": [0, 0]
+        for features_context in pulled_arms_per_context.keys():
+            n = {
+                "00": 0,
+                "01": 0,
+                "10": 0,
+                "11": 0
+            }
+            cc = {
+                "00": 0,
+                "01": 0,
+                "10": 0,
+                "11": 0
             }
 
-            for user in range(n):
-                features_user = features.copy()
-                if features_user[0] is None:
-                    features_user[0] = np.random.binomial(1, 0.5)
-                if features_user[1] is None:
-                    features_user[1] = np.random.binomial(1, 0.5)
-                features_user_string = ""
-                for feature in features_user:
-                    if feature is None:
-                        features_user_string += "N"
-                    elif feature == 0:
-                        features_user_string += "0"
-                    elif feature == 1:
-                        features_user_string += "1"
-                conversion = env_dict[features_user_string].round(pulled_arms_per_context[features_string][0],
-                                                                  features_user)
-                reward[0] += conversion
-                users_data[features_user_string][0] += conversion
-                users_data[features_user_string][1] += 1
-            reward[1] = n - reward[0]
-            reward[2] = reward[0] * margins[pulled_arms_per_context[features_string][0]] - cc
+            n["00"] = int(max(0, env_dict["00"].draw_n(bids[pulled_arms_per_context[
+                features_context][1]], n_noise_std)))
+            n["01"] = int(max(0, env_dict["01"].draw_n(bids[pulled_arms_per_context[
+                features_context][1]], n_noise_std)))
+            n["10"] = int(max(0, env_dict["10"].draw_n(bids[pulled_arms_per_context[
+                features_context][1]], n_noise_std)))
+            n["11"] = int(max(0, env_dict["11"].draw_n(bids[pulled_arms_per_context[
+                features_context][1]], n_noise_std)))
+
+            cc["00"] = max(0, env_dict["00"].draw_cc(bids[pulled_arms_per_context[
+                features_context][1]], cc_noise_std))
+            cc["01"] = max(0, env_dict["01"].draw_cc(bids[pulled_arms_per_context[
+                features_context][1]], cc_noise_std))
+            cc["10"] = max(0, env_dict["10"].draw_cc(bids[pulled_arms_per_context[
+                features_context][1]], cc_noise_std))
+            cc["11"] = max(0, env_dict["11"].draw_cc(bids[pulled_arms_per_context[
+                features_context][1]], cc_noise_std))
+            users_data = {  # conversions and clicks for each user type
+                "00": [0, n["00"], cc["00"]],
+                "01": [0, n["01"], cc["01"]],
+                "10": [0, n["10"], cc["10"]],
+                "11": [0, n["11"], cc["11"]]
+            }
+            reward = [0, 0, 0]  # conversions, failures, reward
+            n_obs = 0
+            cc_obs = 0
+            if features_context == "NN":
+                n_obs = sum([n[f] for f in users_data.keys()])
+                cc_obs = sum([cc[f] for f in users_data.keys()])
+                reward[1] = n_obs
+                for user in users_data.keys():
+                    convs = 0
+                    for i in range(n[user]):
+                        convs += env_dict[user].round(pulled_arms_per_context[features_context][0], user)
+                    reward[0] += convs
+                    reward[1] -= convs
+                    users_data[user][0] = convs
+
+                reward[2] = (reward[0] * margins[pulled_arms_per_context[features_context][0]]) - cc_obs
+
+            elif features_context == "00" or features_context == "01" or features_context == "10" or \
+                    features_context == "11":
+                convs = 0
+                for i in range(n[features_context]):
+                    convs += env_dict[features_context].round(pulled_arms_per_context[features_context][
+                                                                  0], features_context)
+                reward[0] += convs
+                reward[1] = n[features_context] - reward[0]
+                users_data[features_context][0] = reward[0]
+                reward[2] = reward[0] * margins[pulled_arms_per_context[features_context][0]] - cc_obs
+
+            elif features_context == "0N":
+                n_obs = sum([n["00"], n["01"]])
+                cc_obs = sum([cc["00"], cc["01"]])
+                keys_ = ["00", "01"]
+                reward[1] = n_obs
+                for user in keys_:
+                    convs = 0
+                    for i in range(n[user]):
+                        convs += env_dict[user].round(pulled_arms_per_context[features_context][0], user)
+                    reward[0] += convs
+                    reward[1] -= convs
+                    users_data[user][0] = convs
+
+                reward[2] = reward[0] * margins[pulled_arms_per_context[features_context][0]] - cc_obs
+
+            elif features_context == "1N":
+                n_obs = sum([n["10"], n["11"]])
+                cc_obs = sum([cc["10"], cc["11"]])
+                keys_ = ["10", "11"]
+                reward[1] = n_obs
+                for user in keys_:
+                    convs = 0
+                    for i in range(n[user]):
+                        convs += env_dict[user].round(pulled_arms_per_context[features_context][0], user)
+                    reward[0] += convs
+                    reward[1] -= convs
+                    users_data[user][0] = convs
+
+                reward[2] = reward[0] * margins[pulled_arms_per_context[features_context][0]] - cc_obs
+
+            elif features_context == "N0":
+                n_obs = sum([n["00"], n["10"]])
+                cc_obs = sum([cc["00"], cc["10"]])
+                keys_ = ["00", "10"]
+                reward[1] = n_obs
+                for user in keys_:
+                    convs = 0
+                    for i in range(n[user]):
+                        convs += env_dict[user].round(pulled_arms_per_context[features_context][0], user)
+                    reward[0] += convs
+                    reward[1] -= convs
+                    users_data[user][0] = convs
+
+                reward[2] = reward[0] * margins[pulled_arms_per_context[features_context][0]] - cc_obs
+
+            elif features_context == "N1":
+                n_obs = sum([n["10"], n["11"]])
+                cc_obs = sum([cc["10"], cc["11"]])
+                keys_ = ["10", "11"]
+                reward[1] = n_obs
+                for user in keys_:
+                    convs = 0
+                    for i in range(n[user]):
+                        convs += env_dict[user].round(pulled_arms_per_context[features_context][0], user)
+                    reward[0] += convs
+                    reward[1] -= convs
+                    users_data[user][0] = convs
+
+                reward[2] = reward[0] * margins[pulled_arms_per_context[features_context][0]] - cc_obs
 
             # update learners
-            for features_ in users_data.keys():
+            for feature_ in users_data.keys():
                 features_int = []
-                for feature in features_:
+                for feature in feature_:
                     if feature == "N":
                         features_int.append(None)
                     elif feature == "0":
                         features_int.append(0)
                     elif feature == "1":
                         features_int.append(1)
-                if users_data[features_][0] != 0:
+                if users_data[feature_][0] != 0:
                     context_generator_gpts.update_dataset(features_int[0], features_int[1],
-                                                          pulled_arms_per_context[features_string][0],
-                                                          pulled_arms_per_context[features_string][1],
-                                                          users_data[features_][0], users_data[features_][1], cc)
-            contexts_dict[features_string].ts_learner_gpts.update(pulled_arms_per_context[features_string][0], reward)
-            contexts_dict[features_string].n_gpts_learner.update(pulled_arms_per_context[features_string][1], n)
-            contexts_dict[features_string].cc_gpts_learner.update(pulled_arms_per_context[features_string][1], cc)
+                                                          pulled_arms_per_context[features_context][0],
+                                                          pulled_arms_per_context[features_context][1],
+                                                          users_data[feature_][0], users_data[feature_][1],
+                                                          users_data[feature_][2])
+
+            contexts_dict[features_context].ts_learner_gpts.update(pulled_arms_per_context[features_context][0],
+                                                                   reward)
+            contexts_dict[features_context].n_gpts_learner.update(pulled_arms_per_context[features_context][1],
+                                                                  n_obs)
+            contexts_dict[features_context].cc_gpts_learner.update(pulled_arms_per_context[features_context][1],
+                                                                   cc_obs)
             gpts_reward_iteration += reward[2]
 
         # gpucb
@@ -208,69 +294,154 @@ for e in tqdm(range(n_experiments)):
             pulled_arms_per_context[contexts_gpucb[i].get_features()] = [pulled_arm_price, pulled_arm_bid]
 
         # play the arm
-        for features_string in pulled_arms_per_context.keys():
-            features = []
-            for feature in features_string:
-                if feature == "N":
-                    features.append(None)
-                elif feature == "0":
-                    features.append(0)
-                elif feature == "1":
-                    features.append(1)
-
-            n = int(max(0, env_dict[features_string].draw_n(bids[pulled_arms_per_context[features_string][1]],
-                                                            n_noise_std)))
-            cc = max(0, env_dict[features_string].draw_cc(bids[pulled_arms_per_context[features_string][1]],
-                                                          cc_noise_std))
-            reward = [0, 0, 0]  # conversions, failures, reward
-            users_data = {  # conversions and clicks for each user type
-                "00": [0, 0],
-                "01": [0, 0],
-                "10": [0, 0],
-                "11": [0, 0]
+        for features_context in pulled_arms_per_context.keys():
+            n = {
+                "00": 0,
+                "01": 0,
+                "10": 0,
+                "11": 0
+            }
+            cc = {
+                "00": 0,
+                "01": 0,
+                "10": 0,
+                "11": 0
             }
 
-            for user in range(n):
-                features_user = features.copy()
-                if features_user[0] is None:
-                    features_user[0] = np.random.binomial(1, 0.5)
-                if features_user[1] is None:
-                    features_user[1] = np.random.binomial(1, 0.5)
-                features_user_string = ""
-                for feature in features_user:
-                    if feature is None:
-                        features_user_string += "N"
-                    elif feature == 0:
-                        features_user_string += "0"
-                    elif feature == 1:
-                        features_user_string += "1"
-                conversion = env_dict[features_user_string].round(pulled_arms_per_context[features_string][0],
-                                                                  features_user)
-                reward[0] += conversion
-                users_data[features_user_string][0] += conversion
-                users_data[features_user_string][1] += 1
-            reward[1] = n - reward[0]
-            reward[2] = reward[0] * margins[pulled_arms_per_context[features_string][0]] - cc
+            n["00"] = int(max(0, env_dict["00"].draw_n(bids[pulled_arms_per_context[
+                features_context][1]], n_noise_std)))
+            n["01"] = int(max(0, env_dict["01"].draw_n(bids[pulled_arms_per_context[
+                features_context][1]], n_noise_std)))
+            n["10"] = int(max(0, env_dict["10"].draw_n(bids[pulled_arms_per_context[
+                features_context][1]], n_noise_std)))
+            n["11"] = int(max(0, env_dict["11"].draw_n(bids[pulled_arms_per_context[
+                features_context][1]], n_noise_std)))
+
+            cc["00"] = max(0, env_dict["00"].draw_cc(bids[pulled_arms_per_context[
+                features_context][1]], cc_noise_std))
+            cc["01"] = max(0, env_dict["01"].draw_cc(bids[pulled_arms_per_context[
+                features_context][1]], cc_noise_std))
+            cc["10"] = max(0, env_dict["10"].draw_cc(bids[pulled_arms_per_context[
+                features_context][1]], cc_noise_std))
+            cc["11"] = max(0, env_dict["11"].draw_cc(bids[pulled_arms_per_context[
+                features_context][1]], cc_noise_std))
+            users_data = {  # conversions and clicks for each user type
+                "00": [0, n["00"], cc["00"]],
+                "01": [0, n["01"], cc["01"]],
+                "10": [0, n["10"], cc["10"]],
+                "11": [0, n["11"], cc["11"]]
+            }
+            reward = [0, 0, 0]  # conversions, failures, reward
+            n_obs = 0
+            cc_obs = 0
+            if features_context == "NN":
+                n_obs = sum([n[f] for f in users_data.keys()])
+                cc_obs = sum([cc[f] for f in users_data.keys()])
+                reward[1] = n_obs
+                for user in users_data.keys():
+                    convs = 0
+                    for i in range(n[user]):
+                        convs += env_dict[user].round(pulled_arms_per_context[features_context][0], user)
+                    reward[0] += convs
+                    reward[1] -= convs
+                    users_data[user][0] = convs
+
+                reward[2] = (reward[0] * margins[pulled_arms_per_context[features_context][0]]) - cc_obs
+
+            elif features_context == "00" or features_context == "01" or features_context == "10" or \
+                    features_context == "11":
+                convs = 0
+                for i in range(n[features_context]):
+                    convs += env_dict[features_context].round(pulled_arms_per_context[features_context][
+                                                                  0], features_context)
+                reward[0] += convs
+                reward[1] = n[features_context] - reward[0]
+                users_data[features_context][0] = reward[0]
+                reward[2] = reward[0] * margins[pulled_arms_per_context[features_context][0]] - cc_obs
+
+            elif features_context == "0N":
+                n_obs = sum([n["00"], n["01"]])
+                cc_obs = sum([cc["00"], cc["01"]])
+                keys_ = ["00", "01"]
+                reward[1] = n_obs
+                for user in keys_:
+                    convs = 0
+                    for i in range(n[user]):
+                        convs += env_dict[user].round(pulled_arms_per_context[features_context][0], user)
+                    reward[0] += convs
+                    reward[1] -= convs
+                    users_data[user][0] = convs
+
+                reward[2] = reward[0] * margins[pulled_arms_per_context[features_context][0]] - cc_obs
+
+            elif features_context == "1N":
+                n_obs = sum([n["10"], n["11"]])
+                cc_obs = sum([cc["10"], cc["11"]])
+                keys_ = ["10", "11"]
+                reward[1] = n_obs
+                for user in keys_:
+                    convs = 0
+                    for i in range(n[user]):
+                        convs += env_dict[user].round(pulled_arms_per_context[features_context][0], user)
+                    reward[0] += convs
+                    reward[1] -= convs
+                    users_data[user][0] = convs
+
+                reward[2] = reward[0] * margins[pulled_arms_per_context[features_context][0]] - cc_obs
+
+            elif features_context == "N0":
+                n_obs = sum([n["00"], n["10"]])
+                cc_obs = sum([cc["00"], cc["10"]])
+                keys_ = ["00", "10"]
+                reward[1] = n_obs
+                for user in keys_:
+                    convs = 0
+                    for i in range(n[user]):
+                        convs += env_dict[user].round(pulled_arms_per_context[features_context][0], user)
+                    reward[0] += convs
+                    reward[1] -= convs
+                    users_data[user][0] = convs
+
+                reward[2] = reward[0] * margins[pulled_arms_per_context[features_context][0]] - cc_obs
+
+            elif features_context == "N1":
+                n_obs = sum([n["10"], n["11"]])
+                cc_obs = sum([cc["10"], cc["11"]])
+                keys_ = ["10", "11"]
+                reward[1] = n_obs
+                for user in keys_:
+                    convs = 0
+                    for i in range(n[user]):
+                        convs += env_dict[user].round(pulled_arms_per_context[features_context][0], user)
+                    reward[0] += convs
+                    reward[1] -= convs
+                    users_data[user][0] = convs
+
+                reward[2] = reward[0] * margins[pulled_arms_per_context[features_context][0]] - cc_obs
 
             # update learners
-            for features_ in users_data.keys():
+            for feature_ in users_data.keys():
                 features_int = []
-                for feature in features_:
+                for feature in feature_:
                     if feature == "N":
                         features_int.append(None)
                     elif feature == "0":
                         features_int.append(0)
                     elif feature == "1":
                         features_int.append(1)
-                if users_data[features_][0] != 0:
+                if users_data[feature_][0] != 0:
                     context_generator_gpucb.update_dataset(features_int[0], features_int[1],
-                                                           pulled_arms_per_context[features_string][0],
-                                                           pulled_arms_per_context[features_string][1],
-                                                           users_data[features_][0], users_data[features_][1], cc)
-            contexts_dict[features_string].ts_learner_gpucb.update(pulled_arms_per_context[features_string][0],
-                                                                   reward)
-            contexts_dict[features_string].n_gpucb_learner.update(pulled_arms_per_context[features_string][1], n)
-            contexts_dict[features_string].cc_gpucb_learner.update(pulled_arms_per_context[features_string][1], cc)
+                                                           pulled_arms_per_context[features_context][0],
+                                                           pulled_arms_per_context[features_context][1],
+                                                           users_data[feature_][0], users_data[feature_][1],
+                                                           users_data[feature_][2])
+
+            contexts_dict[features_context].ts_learner_gpucb.update(pulled_arms_per_context[features_context][0],
+                                                                    reward)
+            contexts_dict[features_context].n_gpucb_learner.update(pulled_arms_per_context[features_context][1],
+                                                                   n_obs)
+            contexts_dict[features_context].cc_gpucb_learner.update(pulled_arms_per_context[features_context][1],
+                                                                    cc_obs)
             gpucb_reward_iteration += reward[2]
 
         gpts_collected_rewards = np.append(gpts_collected_rewards, gpts_reward_iteration)
@@ -338,8 +509,8 @@ axs[1][1].fill_between(range(T), np.mean(gpts_regret, axis=0) - np.std(
     gpts_regret, axis=0), np.mean(gpts_regret, axis=0) + np.std(gpts_regret, axis=0), color='g', alpha=0.2)
 axs[1][1].fill_between(range(T), np.mean(gpucb_regret, axis=0) - np.std(
     gpucb_regret, axis=0), np.mean(gpucb_regret, axis=0) + np.std(gpucb_regret, axis=0), color='y', alpha=0.2)
-axs[1][1].legend(["Regret TS", "Regret UCB1"])
-axs[1][1].set_title("Instantaneous Regret TS vs UCB1")
+axs[1][1].legend(["Regret GPTS", "Regret GPUCB"])
+axs[1][1].set_title("Instantaneous Regret GPTS vs GPUCB")
 
 plt.show()
 print(gpts_reward)

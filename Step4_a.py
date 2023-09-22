@@ -12,15 +12,15 @@ cost_of_product = 180
 price = 100
 
 bids = np.linspace(0.0, 1.0, n_bids)
-prices = price * np.array([1, 2, 3, 4, 5])
+prices = price * np.array([2, 2.5, 3, 3.5, 4])
 margins = np.array([prices[i] - cost_of_product for i in range(n_prices)])
 classes = np.array([0, 1, 2])
-# C1   C2   C3
-conversion_rate = np.array([[0.93, 0.95, 0.77],  # 1*price
-                            [0.82, 0.84, 0.42],  # 2*price
-                            [0.51, 0.64, 0.29],  # 3*price
-                            [0.38, 0.50, 0.21],  # 4*price
-                            [0.09, 0.18, 0.11]  # 5*price
+#                            C1    C2    C3
+conversion_rate = np.array([[0.38, 0.41, 0.57],  # 1*price
+                            [0.22, 0.24, 0.46],  # 2*price
+                            [0.15, 0.19, 0.31],  # 3*price
+                            [0.12, 0.09, 0.23],  # 4*price
+                            [0.06, 0.05, 0.19]  # 5*price
                             ])
 
 env_array = []
@@ -48,11 +48,11 @@ print(optimal_bid_3)
 print('\n\n')
 
 # EXPERIMENT BEGIN FOR ESTIMATING THE OPTIMAL PRICE
-T = 365
+T = 200
 
-n_experiments = 20
-n_noise_std = 1.5
-cc_noise_std = 1
+n_experiments = 10
+n_noise_std = 2
+cc_noise_std = 3
 
 ts_rewards_per_experiments = [[], [], []]
 gpts_rewards = [[], [], []]
@@ -199,8 +199,8 @@ axs[1][1].fill_between(range(T), np.mean(gpts_regret, axis=0) - np.std(
     gpts_regret, axis=0), np.mean(gpts_regret, axis=0) + np.std(gpts_regret, axis=0), color='g', alpha=0.2)
 axs[1][1].fill_between(range(T), np.mean(gpucb_regret, axis=0) - np.std(
     gpucb_regret, axis=0), np.mean(gpucb_regret, axis=0) + np.std(gpucb_regret, axis=0), color='y', alpha=0.2)
-axs[1][1].legend(["Regret TS", "Regret UCB1"])
-axs[1][1].set_title("Instantaneous Regret TS vs UCB1")
+axs[1][1].legend(["Regret GPTS", "Regret GPUCB"])
+axs[1][1].set_title("Instantaneous Regret GPTS vs GPUCB")
 
 plt.show()
 print(gpts_reward)

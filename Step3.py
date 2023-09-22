@@ -1,10 +1,10 @@
-from Classes.learners import GPTS_Learner, GPUCB_Learner
+from Classes.learners import TS_Learner, GPTS_Learner, GPUCB_Learner
 from Classes.enviroment import Environment
 from Classes.clairvoyant import clairvoyant
 
 import numpy as np
 import matplotlib.pyplot as plt
-from tqdm.autonotebook import tqdm
+from tqdm import tqdm
 
 n_prices = 5
 n_bids = 100
@@ -12,30 +12,20 @@ cost_of_product = 180
 price = 100
 
 bids = np.linspace(0.0, 1.0, n_bids)
-prices = price * np.array([1, 2, 3, 4, 5])
+prices = price * np.array([2, 2.5, 3, 3.5, 4])
 margins = np.array([prices[i] - cost_of_product for i in range(n_prices)])
 classes = np.array([0, 1, 2])
-# C1   C2   C3
-conversion_rate = np.array([[0.93, 0.95, 0.77],  # 1*price
-                            [0.82, 0.84, 0.42],  # 2*price
-                            [0.51, 0.64, 0.29],  # 3*price
-                            [0.38, 0.50, 0.21],  # 4*price
-                            [0.09, 0.18, 0.11]  # 5*price
+#                            C1    C2    C3
+conversion_rate = np.array([[0.38, 0.41, 0.67],  # 1*price
+                            [0.22, 0.24, 0.56],  # 2*price
+                            [0.15, 0.19, 0.44],  # 3*price
+                            [0.12, 0.09, 0.36],  # 4*price
+                            [0.06, 0.05, 0.29]  # 5*price
                             ])
 
 env_array = []
 for c in classes:
     env_array.append(Environment(n_prices, conversion_rate[:, c], c))
-
-# EXPERIMENT BEGIN
-T = 365
-
-n_experiments = 3
-n_noise_std = 1.5
-cc_noise_std = 1
-
-gpts_reward = []
-gpucb_reward = []
 
 optimal = clairvoyant(classes, bids, prices, margins, conversion_rate, env_array)
 opt_index = int(optimal[0][0])
@@ -48,53 +38,80 @@ opt_reward = optimal[2][0]
 print(optimal_bid)
 print(opt_reward)
 
-for e in range(n_experiments):
-    print(e)
-    env = env_array[0]
+# EXPERIMENT BEGIN FOR ESTIMATING THE OPTIMAL PRICE
+T = 365
 
+n_experiments = 25
+n_noise_std = 2
+cc_noise_std = 3
+
+gpts_reward = []
+gpucb_reward = []
+
+for e in tqdm(range(n_experiments)):
+    env = env_array[0]
+    ts_learner_1 = TS_Learner(n_arms=n_prices)
+    ts_learner_2 = TS_Learner(n_arms=n_prices)
     n_gpts_learner = GPTS_Learner(n_arms=n_bids, arms=bids)
     cc_gpts_learner = GPTS_Learner(n_arms=n_bids, arms=bids)
-
     n_gpucb_learner = GPUCB_Learner(n_arms=n_bids, arms=bids)
     cc_gpucb_learner = GPUCB_Learner(n_arms=n_bids, arms=bids)
 
     gpts_collected_rewards = np.array([])
     gpucb_collected_rewards = np.array([])
 
-    for t in tqdm(range(T)):
+    for t in range(0, T):
         # gpts
         # pull the arm
-        sampled_n = np.random.normal(n_gpts_learner.means, n_gpts_learner.sigmas)
-        sampled_cc = np.random.normal(cc_gpts_learner.means, cc_gpts_learner.sigmas)
-        sampled_reward = sampled_n * opt - sampled_cc
-        pulled_arm = np.random.choice(np.where(sampled_reward == sampled_reward.max())[0])
+        pulled_arm_price = ts_learner_1.pull_arm(margins)
+        sampled_n = n_gpucb_learner.means + n_gpucb_learner.confidence
+        sampled_cc = cc_gpucb_learner.means - cc_gpucb_learner.confidence
+        sampled_conv_rate = np.random.beta(ts_learner_1.beta_parameters[pulled_arm_price, 0],
+                                           ts_learner_1.beta_parameters[pulled_arm_price, 1])
+        sampled_reward = sampled_n * sampled_conv_rate * margins[pulled_arm_price] - sampled_cc
+        pulled_arm_bid = np.random.choice(np.where(sampled_reward == sampled_reward.max())[0])
 
         # play the arm
-        n = max(0, env.draw_n(bids[pulled_arm], n_noise_std))
-        cc = max(0, env.draw_cc(bids[pulled_arm], cc_noise_std))
-        reward = n * opt - cc
+        n = int(max(0, env.draw_n(bids[pulled_arm_bid], n_noise_std)))
+        cc = max(0, env.draw_cc(bids[pulled_arm_bid], cc_noise_std))
+
+        reward = [0, 0, 0]  # conversions, failures, reward
+        for user in range(n):
+            reward[0] += env.round(pulled_arm_price)
+        reward[1] = n - reward[0]
+        reward[2] = reward[0] * margins[pulled_arm_price] - cc
 
         # update learners
-        gpts_collected_rewards = np.append(gpts_collected_rewards, reward)
-        n_gpts_learner.update(pulled_arm, n)
-        cc_gpts_learner.update(pulled_arm, cc)
+        ts_learner_1.update(pulled_arm_price, reward)
+        n_gpts_learner.update(pulled_arm_bid, n)
+        cc_gpts_learner.update(pulled_arm_bid, cc)
+        gpts_collected_rewards = np.append(gpts_collected_rewards, reward[2])
 
         # gpucb
         # pull the arm
+        pulled_arm_price = ts_learner_2.pull_arm(margins)
         sampled_n = np.random.normal(n_gpucb_learner.means, n_gpucb_learner.sigmas)
         sampled_cc = np.random.normal(cc_gpucb_learner.means, cc_gpucb_learner.sigmas)
-        sampled_reward = sampled_n * opt - sampled_cc
-        pulled_arm = np.random.choice(np.where(sampled_reward == sampled_reward.max())[0])
+        sampled_conv_rate = np.random.beta(ts_learner_2.beta_parameters[pulled_arm_price, 0],
+                                           ts_learner_2.beta_parameters[pulled_arm_price, 1])
+        sampled_reward = sampled_n * sampled_conv_rate * margins[pulled_arm_price] - sampled_cc
+        pulled_arm_bid = np.random.choice(np.where(sampled_reward == sampled_reward.max())[0])
 
         # play the arm
-        n = max(0, env.draw_n(bids[pulled_arm], n_noise_std))
-        cc = max(0, env.draw_cc(bids[pulled_arm], cc_noise_std))
-        reward = n * opt - cc
+        n = int(max(0, env.draw_n(bids[pulled_arm_bid], n_noise_std)))
+        cc = max(0, env.draw_cc(bids[pulled_arm_bid], cc_noise_std))
+
+        reward = [0, 0, 0]  # conversions, failures, reward
+        for user in range(n):
+            reward[0] += env.round(pulled_arm_price)
+        reward[1] = n - reward[0]
+        reward[2] = reward[0] * margins[pulled_arm_price] - cc
 
         # update learners
-        gpucb_collected_rewards = np.append(gpucb_collected_rewards, reward)
-        n_gpucb_learner.update(pulled_arm, n)
-        cc_gpucb_learner.update(pulled_arm, cc)
+        ts_learner_2.update(pulled_arm_price, reward)
+        n_gpucb_learner.update(pulled_arm_bid, n)
+        cc_gpucb_learner.update(pulled_arm_bid, cc)
+        gpucb_collected_rewards = np.append(gpucb_collected_rewards, reward[2])
 
     gpts_reward.append(gpts_collected_rewards)
     gpucb_reward.append(gpucb_collected_rewards)
@@ -158,7 +175,10 @@ axs[1][1].fill_between(range(T), np.mean(gpts_regret, axis=0) - np.std(
     gpts_regret, axis=0), np.mean(gpts_regret, axis=0) + np.std(gpts_regret, axis=0), color='g', alpha=0.2)
 axs[1][1].fill_between(range(T), np.mean(gpucb_regret, axis=0) - np.std(
     gpucb_regret, axis=0), np.mean(gpucb_regret, axis=0) + np.std(gpucb_regret, axis=0), color='y', alpha=0.2)
-axs[1][1].legend(["Regret TS", "Regret UCB1"])
-axs[1][1].set_title("Instantaneous Regret TS vs UCB1")
+axs[1][1].legend(["Regret GPTS", "Regret GPUCB"])
+axs[1][1].set_title("Instantaneous Regret GPTS vs GPUCB")
 
 plt.show()
+print(gpts_reward)
+print(gpucb_reward)
+print(opt_reward)

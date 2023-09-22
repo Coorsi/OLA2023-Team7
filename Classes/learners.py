@@ -150,9 +150,10 @@ class GPUCB_Learner(Learner):
         self.means = np.zeros(n_arms)
         self.sigmas = np.ones(n_arms) * 10
         self.pulled_arms = []
+        self.confidence = np.array([np.inf] * n_arms)
         alpha = 1
         kernel = C(1e1, (1e-7, 1e7)) * RBF(1e1, (1e-10, 1e7))
-        self.gp = GaussianProcessRegressor(kernel=kernel, alpha=alpha ** 2, n_restarts_optimizer=5)
+        self.gp = GaussianProcessRegressor(kernel=kernel, alpha=alpha ** 2)
         self.iteration = 0
         self.refitFrequency = 13  # 13 bc it divides 364
 
@@ -174,6 +175,7 @@ class GPUCB_Learner(Learner):
         self.t += 1
         self.update_observations(pulled_arm, reward)
         self.update_model()
+        self.confidence = self.sigmas * np.sqrt(2 * np.log(self.t))
 
     def pull_arm(self):
         upper_conf = self.means + 1.96 * self.sigmas
